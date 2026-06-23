@@ -126,6 +126,21 @@ Copy the service block from `docker-compose.snippet.yml` into your existing
 `aggregator/` directory. Ensure your existing `.env` file contains all the
 variables listed above.
 
+### Notes on disk and sensors
+
+**Disk** — `host.disk_used_tb` / `host.disk_total_tb` reflect the path mounted at
+`EXPANSION_PATH` inside the container (default `/host/expansion`). Add a read-only
+bind mount of your data drive in your compose service and set `EXPANSION_PATH` to
+match. If the mount is absent the disk stat returns `null` (widgets show `—`).
+
+**Sensor key names** are hardware-specific. After first startup, run:
+```bash
+docker compose logs glance | grep "BESZEL raw system_stats"
+```
+Find the `'t'` field in the logged record and note the key names (e.g.
+`nvme_composite`, `amdgpu_edge`). Set `NVME_TEMP_SENSOR` / `GPU_TEMP_SENSOR` in
+your `.env` if they differ from the defaults.
+
 ---
 
 ## Snapshot schema
@@ -144,8 +159,18 @@ variables listed above.
     "ram_used_gb": 14.2,
     "ram_total_gb": 32.0,
     "uptime": 864000,
-    "disk_used_tb": 2.31,
-    "disk_total_tb": 7.28
+    "disk_used_tb": 5.29,
+    "disk_total_tb": 20.01,
+    "sensors": {
+      "nvme_temp": 49.0,
+      "gpu_temp": 52.0,
+      "gpu_load_pct": 15.9,
+      "gpu_power_w": 4.6,
+      "gpu_vram_used_mb": 1853,
+      "gpu_vram_total_mb": 18078,
+      "nvme_temp_history": [49.85, 50.85, 49.85],
+      "gpu_temp_history": [58, 55, 56]
+    }
   },
   "cards": [
     {
@@ -214,18 +239,25 @@ last-good cached value is being shown because the most recent poll failed.
 ## Übersicht widget setup
 
 1. Install [Übersicht](https://tracesof.net/uebersicht/)
-2. Create your secrets file (keep it outside this repo so it is never committed):
-   ```bash
-   mkdir -p ~/.config/homelab-glance
-   cp ubersicht/glance.secrets.env.example ~/.config/homelab-glance/secrets.env
-   $EDITOR ~/.config/homelab-glance/secrets.env
-   # Set WIDGET_TOKEN and AGGREGATOR_URL
+2. Copy `ubersicht/glance.jsx` into your Übersicht widgets folder
+3. Open that copy and edit the constants at the top:
+   ```js
+   const AGGREGATOR_URL = "http://YOUR_SERVER_IP:8765/api/dashboard"
+   const WIDGET_TOKEN   = "CHANGE_ME"
+   const SHOW_LOGO      = true   // set false to hide the brand logo
    ```
-3. Copy `ubersicht/glance.jsx` into your Übersicht widgets folder
-4. Übersicht will auto-load and refresh every 30 s
+4. Save — Übersicht will auto-reload and refresh every 30 s
 
-The widget sources `~/.config/homelab-glance/secrets.env` at shell time so
-secrets never live in the widget file itself.
+The widget file lives in the Übersicht folder, which is not a git repo, so
+editing these constants directly is safe.
+
+**Logo:** The brand logo is embedded as a base64 data URI (`LOGO_URI`) directly
+in the script — no external image file is needed. To swap it for a different
+variant, run:
+```bash
+base64 -i path/to/logo.svg | tr -d '\n'
+```
+and paste the output into `LOGO_URI` prefixed with `data:image/svg+xml;base64,`.
 
 ---
 
@@ -235,9 +267,20 @@ secrets never live in the widget file itself.
 2. Open `scriptable/setup-keychain.js`, fill in `WIDGET_TOKEN` and `AGGREGATOR_URL`,
    then run it once inside Scriptable — this stores both values in the iOS Keychain
 3. Copy the contents of `scriptable/glance.js` into a new Scriptable script
-4. Add a new Scriptable widget to your home screen, select "Large" size, and choose
+4. Optionally edit the logo toggle near the top of the script:
+   ```js
+   const SHOW_LOGO = true   // set false to hide the brand logo
+   ```
+5. Add a new Scriptable widget to your home screen, select "Large" size, and choose
    the glance script
-5. Delete the setup-keychain.js script from Scriptable (the Keychain entries survive)
+6. Delete the setup-keychain.js script from Scriptable (the Keychain entries survive)
+
+**Logo:** The amber logo is embedded as a base64 PNG (`LOGO_PNG_B64`) so the script
+is self-contained. To regenerate with a different variant or size:
+```bash
+sips -Z 120 path/to/logo.png --out /tmp/logo-120.png && base64 -i /tmp/logo-120.png | tr -d '\n'
+```
+Paste the output into the `LOGO_PNG_B64` constant.
 
 ### iOS refresh caveat
 

@@ -11,11 +11,11 @@ _snapshot: Optional[Dict[str, Any]] = None
 
 
 async def get_snapshot() -> Optional[Dict[str, Any]]:
-    async with _lock:
-        return _snapshot
+	async with _lock:
+		return _snapshot
 
 
 async def set_snapshot(snap: Dict[str, Any]) -> None:
-    global _snapshot
-    async with _lock:
-        _snapshot = snap
+	global _snapshot
+	async with _lock:
+		_snapshot = snap

@@ -17,3 +17,5 @@ aggregator/.dockerignore
 # Editor
 .DS_Store
 *.swp
+*-glance.jsx
+*-debug.png

@@ -2,6 +2,10 @@
 # In production this service can be merged into an existing docker-compose.yml.
 # Copy this block, create a .env file from .env.example, and adjust the build
 # path to point at this repo's aggregator/ directory.
+#
+# The volume below mounts your data drive read-only so the aggregator can read
+# disk usage directly without modifying your Beszel agent setup. Adjust the
+# host path (/your/data/drive) to match your actual mount point.
 
 services:
   glance:
@@ -13,6 +17,8 @@ services:
       - TZ=America/Chicago
       - PUID=1000
       - PGID=1000
+    volumes:
+      - /your/data/drive:/host/expansion:ro
     ports:
       - 8765:8765
     restart: unless-stopped
