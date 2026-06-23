@@ -1,0 +1,19 @@
+# Secrets — never commit these
+.env
+*.secrets.env
+secrets.env
+*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Docker build artifacts
+aggregator/.dockerignore
+
+# Editor
+.DS_Store
+*.swp

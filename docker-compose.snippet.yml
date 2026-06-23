@@ -1,0 +1,18 @@
+# Standalone compose snippet for the homelab-glance aggregator.
+# In production this service can be merged into an existing docker-compose.yml.
+# Copy this block, create a .env file from .env.example, and adjust the build
+# path to point at this repo's aggregator/ directory.
+
+services:
+  glance:
+    image: homelab-glance
+    build: ./homelab-glance/aggregator
+    container_name: glance
+    env_file: .env
+    environment:
+      - TZ=America/Chicago
+      - PUID=1000
+      - PGID=1000
+    ports:
+      - 8765:8765
+    restart: unless-stopped
