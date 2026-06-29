@@ -28,4 +28,5 @@ xcuserdata/
 *-debug.png
 **/*.md
 !**/README.md
+!CONTROL_PLANE_SETUP.md
 /original-assets
