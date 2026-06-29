@@ -7,6 +7,7 @@ public enum SettingsKeys {
 	public static let useMock = "useMockData"
 	public static let token = "widgetToken"
 	public static let controlToken = "controlToken"
+	public static let hideDockIcon = "hideDockIcon"
 }
 
 /// A nonisolated snapshot of the connection settings, readable from a widget's

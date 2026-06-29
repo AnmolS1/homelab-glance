@@ -42,6 +42,11 @@ public final class AppSettings {
 		didSet { keychain.set(controlToken, for: Keys.controlToken) }
 	}
 
+	/// macOS: hide the Dock icon and run as a menu-bar-only (accessory) app.
+	public var hideDockIcon: Bool {
+		didSet { defaults.set(hideDockIcon, forKey: Keys.hideDockIcon) }
+	}
+
 	public init(
 		defaults: UserDefaults = AppSettings.defaultStore(),
 		keychain: KeychainStore = KeychainStore(accessGroup: AppSettings.keychainGroup)
@@ -53,6 +58,7 @@ public final class AppSettings {
 		self.baseURLString = defaults.string(forKey: Keys.baseURL) ?? ""
 		self.token = keychain.string(for: Keys.token) ?? ""
 		self.controlToken = keychain.string(for: Keys.controlToken) ?? ""
+		self.hideDockIcon = defaults.bool(forKey: Keys.hideDockIcon)
 	}
 
 	/// App Group store when available, else the standard store (unsigned builds).

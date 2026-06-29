@@ -46,6 +46,14 @@ struct SettingsView: View {
 					}
 				}
 				.disabled(settings.useMockData)
+
+				#if os(macOS)
+				Section {
+					Toggle("Hide Dock icon (menu-bar only)", isOn: $settings.hideDockIcon)
+				} footer: {
+					Text("Run from the menu bar without a Dock icon. The menu-bar panel stays available.")
+				}
+				#endif
 			}
 			.navigationTitle("Settings")
 			.toolbar {
