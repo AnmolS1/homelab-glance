@@ -220,8 +220,9 @@ private struct LargeView: View {
 	let dash: Dashboard
 	let updated: Date
 	private let cols = [GridItem(.flexible(), spacing: 5), GridItem(.flexible(), spacing: 5)]
-	/// The set the Scriptable large widget showed (no Prowlarr / HOME).
-	private static let ids = ["jellyfin", "qbittorrent", "pihole", "sonarr", "radarr"]
+	/// The Scriptable large set, plus the HOME containers to fill the tile.
+	private static let ids = ["jellyfin", "qbittorrent", "pihole", "sonarr", "radarr",
+	                          "mosquitto", "zigbee2mqtt"]
 
 	private var cards: [Card] {
 		Self.ids.compactMap { id in dash.cards.first { $0.id == id } }
@@ -243,29 +244,24 @@ private struct LargeView: View {
 	}
 }
 
-/// iPad / macOS `systemExtraLarge` — the fullest layout: every group (adds
-/// Prowlarr + HOME) plus the complete host header, sensors, and footer.
+/// iPad / macOS `systemExtraLarge` — a WIDE, short tile. Every service (adds
+/// Prowlarr + HOME) as a `MiniCard` in a 4-column grid (2 rows), with a slim host
+/// line and compact sensors so nothing clips top/bottom on the short tile.
 private struct ExtraLargeView: View {
 	@Environment(\.blueprint) private var bp
 	let dash: Dashboard
 	let updated: Date
-	private let cols = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8),
-	                    GridItem(.flexible(), spacing: 8)]
+	private let cols = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 10) {
-			HostHeaderView(host: dash.host, rosetteAnimated: false)
+		VStack(alignment: .leading, spacing: 8) {
+			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
-			ForEach(dash.groupedCards, id: \.group) { section in
-				VStack(alignment: .leading, spacing: 5) {
-					SectionLabel(section.group)
-					LazyVGrid(columns: cols, alignment: .leading, spacing: 8) {
-						ForEach(section.cards) { ServiceCardView(card: $0) }
-					}
-				}
+			LazyVGrid(columns: cols, alignment: .leading, spacing: 8) {
+				ForEach(dash.groupedCards.flatMap(\.cards)) { MiniCard(card: $0) }
 			}
 			if let s = dash.host.sensors, s.hasReadings {
-				SensorsView(sensors: s)
+				CompactSensors(s: s)
 			}
 			Spacer(minLength: 0)
 			UpdatedFooter(date: updated)
