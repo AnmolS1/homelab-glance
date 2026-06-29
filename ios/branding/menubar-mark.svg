@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Homelab Glance menu-bar mark">
+  <!-- Monochrome node-mark for the macOS menu bar (rendered as a template image;
+       only the alpha shape matters — the system tints it). -->
+  <g stroke="#FFFFFF" stroke-width="34" fill="none" stroke-linejoin="round">
+    <polygon points="742,512 627,711 397,711 282,512 397,313 627,313"/>
+    <path d="M512 512 L742 512 M512 512 L627 711 M512 512 L397 711 M512 512 L282 512 M512 512 L397 313 M512 512 L627 313"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="742" cy="512" r="30"/>
+    <circle cx="627" cy="711" r="30"/>
+    <circle cx="397" cy="711" r="30"/>
+    <circle cx="282" cy="512" r="30"/>
+    <circle cx="397" cy="313" r="30"/>
+    <circle cx="627" cy="313" r="30"/>
+    <circle cx="512" cy="512" r="44"/>
+  </g>
+</svg>
