@@ -1,0 +1,48 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Homelab Glance app icon — the ponderance amber node mark on blueprint graph paper">
+  <defs>
+    <radialGradient id="ground" cx="44%" cy="40%" r="72%">
+      <stop offset="0%" stop-color="#13202A"/>
+      <stop offset="100%" stop-color="#0B131B"/>
+    </radialGradient>
+    <radialGradient id="amberGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F5C842" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#F5C842" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="85.333" height="85.333" patternUnits="userSpaceOnUse">
+      <path d="M85.333 0H0V85.333" fill="none" stroke="#F5C842" stroke-opacity="0.07" stroke-width="1.4"/>
+    </pattern>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#ground)"/>
+  <rect width="1024" height="1024" fill="url(#grid)"/>
+
+  <circle cx="512" cy="512" r="250" fill="url(#amberGlow)"/>
+
+  <g stroke="#F5C842" stroke-width="6" fill="none" stroke-linejoin="round" opacity="0.92">
+    <polygon points="742,512 627,711 397,711 282,512 397,313 627,313"/>
+    <path d="M512 512 L742 512 M512 512 L627 711 M512 512 L397 711 M512 512 L282 512 M512 512 L397 313 M512 512 L627 313"/>
+  </g>
+  <g stroke="#F5C842" stroke-width="3" fill="none" opacity="0.45">
+    <path d="M627 313 L806 342 M742 512 L806 682 M627 711 L512 852 M397 711 L218 682 M282 512 L218 342 M397 313 L512 172"/>
+  </g>
+
+  <g fill="#F5C842">
+    <circle cx="742" cy="512" r="17"/>
+    <circle cx="627" cy="711" r="17"/>
+    <circle cx="397" cy="711" r="17"/>
+    <circle cx="282" cy="512" r="17"/>
+    <circle cx="397" cy="313" r="17"/>
+    <circle cx="627" cy="313" r="17"/>
+  </g>
+  <g fill="#F5C842" opacity="0.5">
+    <circle cx="806" cy="342" r="9"/>
+    <circle cx="806" cy="682" r="9"/>
+    <circle cx="512" cy="852" r="9"/>
+    <circle cx="218" cy="682" r="9"/>
+    <circle cx="218" cy="342" r="9"/>
+    <circle cx="512" cy="172" r="9"/>
+  </g>
+
+  <circle cx="512" cy="512" r="30" fill="#0B131B"/>
+  <circle cx="512" cy="512" r="20" fill="#F5C842"/>
+</svg>

@@ -22,3 +22,24 @@ services:
     ports:
       - 8765:8765
     restart: unless-stopped
+    # For the optional Docker control plane, also set in .env:
+    #   DOCKER_PROXY_URL=http://dockerproxy:2375
+    #   CONTROL_TOKEN=<openssl rand -hex 32>
+    # and make sure `glance` shares a network with `dockerproxy` below.
+
+  # ── Optional: Docker control plane via tecnativa/docker-socket-proxy ─────────
+  # Lets the native app start/stop/restart containers (replacing Portainer).
+  # Minimal flags: CONTAINERS + POST. EXEC stays OFF (no in-container shell).
+  # The raw Docker socket is mounted ONLY here, never into `glance`.
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: dockerproxy
+    environment:
+      - CONTAINERS=1   # GET /containers, logs
+      - POST=1         # POST start/stop/restart
+      - EXEC=0         # keep the dangerous one off
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    # Do not publish port 2375 to the host — reach it only over the internal
+    # compose network (e.g. http://dockerproxy:2375 from `glance`).

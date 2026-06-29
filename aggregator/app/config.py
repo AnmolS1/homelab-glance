@@ -37,6 +37,18 @@ class Settings:
 	poll_seconds: int = int(os.getenv("POLL_SECONDS", "15"))
 	widget_token: str = os.getenv("WIDGET_TOKEN", "")
 
+	# Docker control plane (optional) — via tecnativa/docker-socket-proxy.
+	# Leave DOCKER_PROXY_URL empty to disable the control endpoints entirely.
+	docker_proxy_url: str = os.getenv("DOCKER_PROXY_URL", "")          # e.g. http://dockerproxy:2375
+	control_token: str = os.getenv("CONTROL_TOKEN", "")               # required for writes (start/stop/restart)
+	# If set (comma-separated), ONLY these container names may be controlled.
+	# If empty, all containers may be controlled EXCEPT the protected set below.
+	docker_control_allowlist: str = os.getenv("DOCKER_CONTROL_ALLOWLIST", "")
+	# Never controllable, regardless of allowlist (don't let it stop its own plumbing).
+	docker_protected: str = os.getenv("DOCKER_PROTECTED", "dockerproxy,caddy,cloudflared,glance")
+	# Optional file to append a JSON-lines audit record for every write.
+	audit_log_path: str = os.getenv("AUDIT_LOG_PATH", "")
+
 	# Expansion disk — read via read-only bind mount into the container
 	expansion_path: str = os.getenv("EXPANSION_PATH", "/host/expansion")
 

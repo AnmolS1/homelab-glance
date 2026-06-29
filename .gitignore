@@ -14,8 +14,18 @@ venv/
 # Docker build artifacts
 aggregator/.dockerignore
 
+# Xcode / iOS app (project is generated from ios/project.yml via XcodeGen)
+ios/HomelabGlance.xcodeproj/
+ios/*.xcworkspace/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
 # Editor
 .DS_Store
 *.swp
 *-glance.jsx
 *-debug.png
+**/*.md
+!**/README.md
+/original-assets
