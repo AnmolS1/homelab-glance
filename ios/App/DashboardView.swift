@@ -8,14 +8,25 @@ struct DashboardView: View {
 	@Environment(\.scenePhase) private var scenePhase
 
 	private let settings: AppSettings
+	/// When hosted in the MenuBarExtra popover there's no title bar, so `.toolbar`
+	/// items don't render — show the nav buttons in-content instead.
+	private let inPanel: Bool
 	@State private var model: DashboardViewModel
 
 	private static let groupOrder = ["Media", "Acquisition", "Infrastructure", "Home"]
 	private let columns = [GridItem(.adaptive(minimum: 165), spacing: 10)]
 
-	init(settings: AppSettings) {
+	init(settings: AppSettings, inPanel: Bool = false) {
 		self.settings = settings
+		self.inPanel = inPanel
 		_model = State(initialValue: DashboardViewModel(settings: settings))
+	}
+
+	private var controlLink: some View {
+		NavigationLink { ControlView(settings: settings) } label: { Image(systemName: "server.rack") }
+	}
+	private var settingsLink: some View {
+		NavigationLink { SettingsView(settings: settings) } label: { Image(systemName: "gearshape") }
 	}
 
 	var body: some View {
@@ -23,25 +34,28 @@ struct DashboardView: View {
 		NavigationStack {
 			ZStack {
 				GraphPaperBackground()
-				content(bp)
+				if inPanel {
+					VStack(spacing: 0) {
+						HStack(spacing: 14) {
+							Spacer()
+							controlLink
+							settingsLink
+						}
+						.font(.title3)
+						.tint(bp.crease)
+						.padding(.horizontal, 14)
+						.padding(.top, 10)
+						content(bp)
+					}
+				} else {
+					content(bp)
+				}
 			}
 			.navigationTitle("")
 			.toolbar {
-				ToolbarItem(placement: .primaryAction) {
-					NavigationLink {
-						ControlView(settings: settings)
-					} label: {
-						Image(systemName: "server.rack")
-					}
-					.tint(bp.crease)
-				}
-				ToolbarItem(placement: .primaryAction) {
-					NavigationLink {
-						SettingsView(settings: settings)
-					} label: {
-						Image(systemName: "gearshape")
-					}
-					.tint(bp.crease)
+				if !inPanel {
+					ToolbarItem(placement: .primaryAction) { controlLink.tint(bp.crease) }
+					ToolbarItem(placement: .primaryAction) { settingsLink.tint(bp.crease) }
 				}
 			}
 		}

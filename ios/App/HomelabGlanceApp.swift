@@ -29,7 +29,7 @@ struct HomelabGlanceApp: App {
 		// Always-available Übersicht replacement: the full dashboard in a menu-bar
 		// dropdown. Template image so the system sizes/tints it for the bar.
 		MenuBarExtra("Homelab Glance", image: "MenuBarMark") {
-			DashboardView(settings: settings)
+			DashboardView(settings: settings, inPanel: true)
 				.frame(width: 480, height: 720)
 				.preferredColorScheme(.dark)
 		}
