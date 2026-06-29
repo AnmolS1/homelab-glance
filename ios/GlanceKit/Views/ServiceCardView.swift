@@ -28,7 +28,8 @@ public struct ServiceCardView: View {
 			body(for: card)
 		}
 		.padding(compact ? 9 : 11)
-		.frame(maxWidth: .infinity, alignment: .leading)
+		// Fill the grid cell so cards in the same row share the tallest's height.
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 		.background(bp.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 		.overlay(alignment: .topTrailing) { FoldedCorner().padding(5) }
 		.overlay {

@@ -180,17 +180,25 @@ struct LogsView: View {
 	@State private var logs = ""
 	@State private var loading = true
 
+	private let bottomID = "logs-bottom"
+
 	var body: some View {
-		ScrollView {
-			Text(logs.isEmpty ? "—" : logs)
-				.font(.system(.caption2, design: .monospaced))
-				.foregroundStyle(bp.ink)
-				.frame(maxWidth: .infinity, alignment: .leading)
-				.textSelection(.enabled)
-				.padding()
+		ScrollViewReader { proxy in
+			ScrollView {
+				Text(logs.isEmpty ? "—" : logs)
+					.font(.system(.caption2, design: .monospaced))
+					.foregroundStyle(bp.ink)
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.textSelection(.enabled)
+					.padding()
+				Color.clear.frame(height: 1).id(bottomID)   // scroll anchor (newest)
+			}
+			.background(GraphPaperBackground())
+			.overlay(alignment: .bottomTrailing) { scrollToBottomButton(proxy) }
+			.overlay { if loading { ProgressView().tint(bp.crease) } }
+			// Jump to the newest line whenever logs load or refresh.
+			.onChange(of: logs) { _, _ in proxy.scrollTo(bottomID, anchor: .bottom) }
 		}
-		.background(GraphPaperBackground())
-		.overlay { if loading { ProgressView().tint(bp.crease) } }
 		.navigationTitle(container)
 		.toolbar {
 			ToolbarItem(placement: .primaryAction) {
@@ -198,6 +206,24 @@ struct LogsView: View {
 			}
 		}
 		.task { await load() }
+	}
+
+	/// Blueprint-themed floating control to jump to the newest log line.
+	private func scrollToBottomButton(_ proxy: ScrollViewProxy) -> some View {
+		Button {
+			withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
+		} label: {
+			Image(systemName: "arrow.down.to.line")
+				.font(.system(size: 14, weight: .semibold))
+				.foregroundStyle(bp.graph)
+				.frame(width: 36, height: 36)
+				.background(bp.crease, in: Circle())
+				.overlay(Circle().strokeBorder(bp.creaseLine, lineWidth: 1))
+				.shadow(color: .black.opacity(0.35), radius: 3, y: 1)
+		}
+		.buttonStyle(.plain)
+		.padding(16)
+		.help("Scroll to newest")
 	}
 
 	private func load() async {

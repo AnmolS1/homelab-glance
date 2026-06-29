@@ -205,7 +205,8 @@ private struct MiniCard: View {
 			}
 		}
 		.padding(7)
-		.frame(maxWidth: .infinity, alignment: .leading)
+		// Fill the grid cell so cards in the same row share the tallest's height.
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 		.background(bp.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 		.overlay { RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(borderColor, lineWidth: 1) }
 		.opacity(card.status == .down ? 0.6 : 1)

@@ -58,6 +58,11 @@ struct DashboardView: View {
 					ToolbarItem(placement: .primaryAction) { settingsLink.tint(bp.crease) }
 				}
 			}
+			// In the menu-bar popover there's no title bar — hide the empty
+			// nav-bar area so the in-content buttons sit at the very top.
+			#if os(macOS)
+			.toolbar(inPanel ? .hidden : .automatic, for: .windowToolbar)
+			#endif
 		}
 		.environment(\.blueprint, bp)
 		.tint(bp.crease)
