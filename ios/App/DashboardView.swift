@@ -9,8 +9,6 @@ struct DashboardView: View {
 
 	private let settings: AppSettings
 	@State private var model: DashboardViewModel
-	@State private var showingSettings = false
-	@State private var showingControl = false
 
 	private static let groupOrder = ["Media", "Acquisition", "Infrastructure", "Home"]
 	private let columns = [GridItem(.adaptive(minimum: 165), spacing: 10)]
@@ -30,16 +28,16 @@ struct DashboardView: View {
 			.navigationTitle("")
 			.toolbar {
 				ToolbarItem(placement: .primaryAction) {
-					Button {
-						showingControl = true
+					NavigationLink {
+						ControlView(settings: settings)
 					} label: {
 						Image(systemName: "server.rack")
 					}
 					.tint(bp.crease)
 				}
 				ToolbarItem(placement: .primaryAction) {
-					Button {
-						showingSettings = true
+					NavigationLink {
+						SettingsView(settings: settings)
 					} label: {
 						Image(systemName: "gearshape")
 					}
@@ -49,19 +47,15 @@ struct DashboardView: View {
 		}
 		.environment(\.blueprint, bp)
 		.tint(bp.crease)
-		.sheet(isPresented: $showingControl) {
-			NavigationStack { ControlView(settings: settings) }
-				.environment(\.blueprint, bp)
-				.tint(bp.crease)
-		}
-		.sheet(isPresented: $showingSettings, onDismiss: { model.applySettings() }) {
-			SettingsView(settings: settings)
-				.environment(\.blueprint, bp)
-		}
 		.task { model.start() }
 		.onChange(of: scenePhase) { _, phase in
 			if phase == .active { model.start() } else { model.stop() }
 		}
+		// Re-read the provider when connection settings change (push nav has no
+		// sheet-dismiss hook).
+		.onChange(of: settings.useMockData) { _, _ in model.applySettings() }
+		.onChange(of: settings.baseURLString) { _, _ in model.applySettings() }
+		.onChange(of: settings.token) { _, _ in model.applySettings() }
 	}
 
 	@ViewBuilder
@@ -78,7 +72,7 @@ struct DashboardView: View {
 					.font(Typography.text(13))
 					.foregroundStyle(bp.ink60)
 					.multilineTextAlignment(.center)
-				Button("Open Settings") { showingSettings = true }
+				NavigationLink("Open Settings") { SettingsView(settings: settings) }
 					.buttonStyle(.bordered)
 					.tint(bp.crease)
 			}

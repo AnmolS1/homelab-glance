@@ -30,7 +30,7 @@ struct HomelabGlanceApp: App {
 		// dropdown. Template image so the system sizes/tints it for the bar.
 		MenuBarExtra("Homelab Glance", image: "MenuBarMark") {
 			DashboardView(settings: settings)
-				.frame(width: 440, height: 660)
+				.frame(width: 480, height: 720)
 				.preferredColorScheme(.dark)
 		}
 		.menuBarExtraStyle(.window)

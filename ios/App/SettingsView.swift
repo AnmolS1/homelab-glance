@@ -12,8 +12,7 @@ struct SettingsView: View {
 	@State private var testResult: String?
 
 	var body: some View {
-		NavigationStack {
-			Form {
+		Form {
 				Section {
 					Toggle("Use mock data", isOn: $settings.useMockData)
 				} footer: {
@@ -55,11 +54,10 @@ struct SettingsView: View {
 				}
 				#endif
 			}
-			.navigationTitle("Settings")
-			.toolbar {
-				ToolbarItem(placement: .confirmationAction) {
-					Button("Done") { dismiss() }
-				}
+		.navigationTitle("Settings")
+		.toolbar {
+			ToolbarItem(placement: .confirmationAction) {
+				Button("Done") { dismiss() }
 			}
 		}
 	}
