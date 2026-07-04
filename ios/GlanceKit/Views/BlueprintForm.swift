@@ -212,10 +212,18 @@ public struct BlueprintActionRow: View {
 			.tint(bp.crease)
 			.disabled(disabled || busy)
 			if let result {
-				Text(result)
-					.font(Typography.text(13))
-					.foregroundStyle(isError ? bp.crane : bp.ink60)
-					.fixedSize(horizontal: false, vertical: true)
+				// Errors: crane icon + ink text (crane-as-text misses AA in light).
+				HStack(alignment: .firstTextBaseline, spacing: 6) {
+					if isError {
+						Image(systemName: "exclamationmark.triangle.fill")
+							.font(.system(size: 11, weight: .semibold))
+							.foregroundStyle(bp.crane)
+					}
+					Text(result)
+						.font(Typography.text(13))
+						.foregroundStyle(isError ? bp.ink : bp.ink60)
+						.fixedSize(horizontal: false, vertical: true)
+				}
 			}
 		}
 		.frame(maxWidth: .infinity, alignment: .leading)
