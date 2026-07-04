@@ -18,6 +18,26 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<!-- The widget process makes its OWN network calls to the aggregator (the
+	     timeline provider live-fetches). It therefore needs the same ATS posture
+	     as the app: HTTPS by default, cleartext permitted only to local-network
+	     hosts and Tailscale MagicDNS (*.ts.net, which rides the encrypted
+	     WireGuard tunnel). Never NSAllowsArbitraryLoads. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>ts.net</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

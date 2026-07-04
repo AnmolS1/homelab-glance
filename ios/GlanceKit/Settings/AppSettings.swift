@@ -47,6 +47,11 @@ public final class AppSettings {
 		didSet { defaults.set(hideDockIcon, forKey: Keys.hideDockIcon) }
 	}
 
+	/// First-run onboarding has been shown (connected or "explore with sample data").
+	public var hasCompletedOnboarding: Bool {
+		didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.onboarded) }
+	}
+
 	public init(
 		defaults: UserDefaults = AppSettings.defaultStore(),
 		keychain: KeychainStore = KeychainStore(accessGroup: AppSettings.keychainGroup)
@@ -59,6 +64,7 @@ public final class AppSettings {
 		self.token = keychain.string(for: Keys.token) ?? ""
 		self.controlToken = keychain.string(for: Keys.controlToken) ?? ""
 		self.hideDockIcon = defaults.bool(forKey: Keys.hideDockIcon)
+		self.hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarded)
 	}
 
 	/// App Group store when available, else the standard store (unsigned builds).

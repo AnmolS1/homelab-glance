@@ -11,7 +11,7 @@ final class ModelDecodingTests: XCTestCase {
 		XCTAssertEqual(dash.cards.count, 8)
 
 		// Host
-		XCTAssertEqual(dash.host.name, "discofin")
+		XCTAssertEqual(dash.host.name, "demo-server")
 		XCTAssertEqual(dash.host.status, .up)
 		XCTAssertEqual(dash.host.cpuPct, 8.4)
 		XCTAssertEqual(dash.host.ramTotalGb, 32)

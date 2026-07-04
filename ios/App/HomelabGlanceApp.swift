@@ -8,6 +8,7 @@ import AppKit
 struct HomelabGlanceApp: App {
 	@State private var settings = AppSettings.shared
 	@State private var router = DeepLinkRouter()
+	@State private var showOnboarding = false
 
 	init() {
 		BlueprintFonts.registerAll()
@@ -16,6 +17,10 @@ struct HomelabGlanceApp: App {
 	var body: some Scene {
 		WindowGroup {
 			DashboardView(settings: settings, router: router)
+				.onAppear { showOnboarding = !settings.hasCompletedOnboarding }
+				.sheet(isPresented: $showOnboarding) {
+					OnboardingSheet(settings: settings)
+				}
 				// Widget cards deep-link here: homelabglance://logs/<container>.
 				.onOpenURL { url in
 					if let link = DeepLink(url: url) { router.pending = link }

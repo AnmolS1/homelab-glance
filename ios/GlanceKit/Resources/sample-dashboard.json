@@ -2,7 +2,7 @@
   "generated_at": 1751212800,
   "poll_seconds": 15,
   "host": {
-    "name": "discofin",
+    "name": "demo-server",
     "status": "up",
     "stale": false,
     "cpu_pct": 8.4,

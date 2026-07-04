@@ -8,6 +8,7 @@ public enum SettingsKeys {
 	public static let token = "widgetToken"
 	public static let controlToken = "controlToken"
 	public static let hideDockIcon = "hideDockIcon"
+	public static let onboarded = "hasCompletedOnboarding"
 }
 
 /// A nonisolated snapshot of the connection settings, readable from a widget's
