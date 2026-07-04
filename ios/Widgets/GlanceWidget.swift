@@ -18,9 +18,8 @@ struct GlanceWidget: Widget {
 		[.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge,
 		 .accessoryInline, .accessoryCircular, .accessoryRectangular]
 		#else
-		// macOS doesn't render .systemExtraLarge cleanly here; Large is the biggest
-		// Mac widget. The full desktop view is the menu-bar panel + window.
-		[.systemSmall, .systemMedium, .systemLarge]
+		// macOS supports the wide .systemExtraLarge tile too (renders ExtraLargeView).
+		[.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge]
 		#endif
 	}
 }

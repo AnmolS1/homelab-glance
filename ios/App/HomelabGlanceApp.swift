@@ -7,6 +7,7 @@ import AppKit
 @main
 struct HomelabGlanceApp: App {
 	@State private var settings = AppSettings.shared
+	@State private var router = DeepLinkRouter()
 
 	init() {
 		BlueprintFonts.registerAll()
@@ -14,8 +15,12 @@ struct HomelabGlanceApp: App {
 
 	var body: some Scene {
 		WindowGroup {
-			DashboardView(settings: settings)
+			DashboardView(settings: settings, router: router)
 				.preferredColorScheme(.dark)
+				// Widget cards deep-link here: homelabglance://logs/<container>.
+				.onOpenURL { url in
+					if let link = DeepLink(url: url) { router.pending = link }
+				}
 				#if os(macOS)
 				.task { applyDockPolicy() }
 				.onChange(of: settings.hideDockIcon) { _, _ in applyDockPolicy() }

@@ -11,27 +11,43 @@ struct DashboardView: View {
 	/// When hosted in the MenuBarExtra popover there's no title bar, so `.toolbar`
 	/// items don't render — show the nav buttons in-content instead.
 	private let inPanel: Bool
+	/// Non-nil only for the main window: routes incoming deep links into `path`.
+	private let router: DeepLinkRouter?
 	@State private var model: DashboardViewModel
+	@State private var path = NavigationPath()
 
 	private static let groupOrder = ["Media", "Acquisition", "Infrastructure", "Home"]
 	private let columns = [GridItem(.adaptive(minimum: 165), spacing: 10)]
 
-	init(settings: AppSettings, inPanel: Bool = false) {
+	init(settings: AppSettings, inPanel: Bool = false, router: DeepLinkRouter? = nil) {
 		self.settings = settings
 		self.inPanel = inPanel
+		self.router = router
 		_model = State(initialValue: DashboardViewModel(settings: settings))
 	}
 
 	private var controlLink: some View {
-		NavigationLink { ControlView(settings: settings) } label: { Image(systemName: "server.rack") }
+		NavigationLink(value: DashRoute.containers) { Image(systemName: "server.rack") }
 	}
 	private var settingsLink: some View {
 		NavigationLink { SettingsView(settings: settings) } label: { Image(systemName: "gearshape") }
 	}
 
+	/// Translate a deep link into stack pushes. `.logs` lands on the container list
+	/// with the logs on top, so Back returns to the list.
+	private func handle(_ link: DeepLink) {
+		switch link {
+		case .containers:
+			path = NavigationPath([DashRoute.containers])
+		case .logs(let container):
+			path = NavigationPath([DashRoute.containers, DashRoute.logs(container: container)])
+		}
+		router?.pending = nil
+	}
+
 	var body: some View {
 		let bp = BlueprintColors.resolve(scheme)
-		NavigationStack {
+		NavigationStack(path: $path) {
 			ZStack {
 				GraphPaperBackground()
 				if inPanel {
@@ -52,6 +68,15 @@ struct DashboardView: View {
 				}
 			}
 			.navigationTitle("")
+			.navigationDestination(for: DashRoute.self) { route in
+				switch route {
+				case .containers:
+					ControlView(settings: settings)
+				case .logs(let container):
+					LogsView(settings: settings, container: container)
+						.environment(\.blueprint, bp)
+				}
+			}
 			.toolbar {
 				if !inPanel {
 					ToolbarItem(placement: .primaryAction) { controlLink.tint(bp.crease) }
@@ -75,6 +100,12 @@ struct DashboardView: View {
 		.onChange(of: settings.useMockData) { _, _ in model.applySettings() }
 		.onChange(of: settings.baseURLString) { _, _ in model.applySettings() }
 		.onChange(of: settings.token) { _, _ in model.applySettings() }
+		// Deep links (main window only): translate an incoming DeepLink into nav
+		// pushes. `.task` catches a link that arrived during cold launch.
+		.onChange(of: router?.pending) { _, link in
+			if let link { handle(link) }
+		}
+		.task { if let link = router?.pending { handle(link) } }
 	}
 
 	@ViewBuilder

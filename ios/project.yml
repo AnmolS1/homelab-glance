@@ -73,6 +73,21 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Widgets/Info.plist
         CODE_SIGN_ENTITLEMENTS: Widgets/HomelabGlanceWidgets.entitlements
+        # The widget extension links GlanceKit but the framework is embedded in the
+        # PARENT app bundle, not the appex. It must find it via rpath or it crashes
+        # at launch (dyld "Library not loaded: @rpath/GlanceKit.framework") and the
+        # widget renders blank. The appex nests deeper than the app, so the search
+        # paths differ per platform:
+        #   iOS:   App.app/PlugIns/W.appex/W          → ../../Frameworks
+        #   macOS: App.app/Contents/PlugIns/W.appex/Contents/MacOS/W → ../../../../Frameworks
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
+          - "@executable_path/../../../../Frameworks"
+          - "@loader_path/Frameworks"
+          - "@loader_path/../../Frameworks"
+          - "@loader_path/../../../../Frameworks"
 
   # ── Unit tests for GlanceKit model decoding ─────────────────────────────────
   GlanceKitTests:

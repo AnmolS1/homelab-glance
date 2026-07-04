@@ -24,6 +24,19 @@
 	<true/>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<!-- Custom URL scheme so widget cards can deep-link into the app (e.g.
+	     homelabglance://logs/<container>). Handled by onOpenURL in HomelabGlanceApp. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>dev.ponderance.homelabglance</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>homelabglance</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>
