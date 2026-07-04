@@ -4,7 +4,15 @@ import GlanceKit
 
 struct GlanceWidget: Widget {
 	var body: some WidgetConfiguration {
-		StaticConfiguration(kind: "HomelabGlanceDashboard", provider: DashboardTimelineProvider()) { entry in
+		// Same kind string as the previous StaticConfiguration — WidgetKit
+		// migrates already-placed widgets in place, initializing the intent
+		// with its defaults (all-visible containers, grid, regular), which
+		// reproduces the pre-migration behavior exactly.
+		AppIntentConfiguration(
+			kind: "HomelabGlanceDashboard",
+			intent: GlanceConfigurationIntent.self,
+			provider: DashboardTimelineProvider()
+		) { entry in
 			DashboardWidgetEntryView(entry: entry)
 		}
 		.configurationDisplayName("Homelab Glance")

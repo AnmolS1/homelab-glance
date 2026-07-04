@@ -136,14 +136,17 @@ struct DashboardView: View {
 	}
 
 	private func loaded(_ dash: Dashboard, _ bp: BlueprintColors) -> some View {
-		let grouped = Dictionary(grouping: dash.cards, by: { $0.group ?? "Other" })
 		// Rich-when-detected, else generic: containers whose service already has
 		// a rich card are skipped; the rest render as generic container tiles.
-		let genericTiles: [(DockerContainer, ServiceType?)] = mergeTiles(
-			cards: dash.cards, containers: dash.containers ?? []
-		).compactMap {
+		// The user's CardConfig applies visibility, order, groups, and renames.
+		let config = CardConfigStore.shared.load()
+		let tiles = mergeTiles(cards: dash.cards, containers: dash.containers ?? [], config: config)
+		let richCards = tiles.compactMap { if case .rich(let card) = $0 { card } else { nil } }
+		let grouped = Dictionary(grouping: richCards, by: { $0.group ?? "Other" })
+		let genericTiles: [(DockerContainer, ServiceType?)] = tiles.compactMap {
 			if case .generic(let container, let type) = $0 { (container, type) } else { nil }
 		}
+		let genericGrouped = Dictionary(grouping: genericTiles) { config.groups[$0.0.name] ?? "Containers" }
 		return VStack(alignment: .leading, spacing: 18) {
 			HostHeaderView(host: dash.host)
 
@@ -151,23 +154,26 @@ struct DashboardView: View {
 				.fill(bp.creaseLine)
 				.frame(height: 1)
 
-			ForEach(Self.groupOrder.filter { grouped[$0] != nil }, id: \.self) { group in
+			ForEach(Self.groupOrder.filter { grouped[$0] != nil || genericGrouped[$0] != nil }, id: \.self) { group in
 				VStack(alignment: .leading, spacing: 8) {
 					SectionLabel(group)
 					LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
 						ForEach(grouped[group] ?? []) { card in
 							ServiceCardView(card: card)
 						}
+						ForEach(genericGrouped[group] ?? [], id: \.0.name) { container, type in
+							GenericContainerTile(container: container, serviceType: type, config: config, settings: settings)
+						}
 					}
 				}
 			}
 
-			if !genericTiles.isEmpty {
+			if let ungrouped = genericGrouped["Containers"], !ungrouped.isEmpty {
 				VStack(alignment: .leading, spacing: 8) {
 					SectionLabel("Containers")
 					LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-						ForEach(genericTiles, id: \.0.name) { container, type in
-							GenericContainerTile(container: container, serviceType: type, settings: settings)
+						ForEach(ungrouped, id: \.0.name) { container, type in
+							GenericContainerTile(container: container, serviceType: type, config: config, settings: settings)
 						}
 					}
 				}
@@ -194,13 +200,21 @@ struct DashboardView: View {
 private struct GenericContainerTile: View {
 	let container: DockerContainer
 	let serviceType: ServiceType?
+	var config = CardConfig()
 	let settings: AppSettings
 
 	@State private var stats: ContainerStats?
 
+	/// The container with the user's display-name override applied.
+	private var displayContainer: DockerContainer {
+		var c = container
+		c.name = config.displayName(for: container.name)
+		return c
+	}
+
 	var body: some View {
 		NavigationLink(value: DashRoute.logs(container: container.name)) {
-			GenericContainerCardView(container: container, serviceType: serviceType, stats: stats)
+			GenericContainerCardView(container: displayContainer, serviceType: serviceType, stats: stats)
 		}
 		.buttonStyle(.plain)
 		.contextMenu {

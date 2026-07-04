@@ -44,6 +44,19 @@ struct SettingsView: View {
 				.disabled(settings.useMockData)
 				.opacity(settings.useMockData ? 0.5 : 1)
 
+				BlueprintFormSection("Widget & cards") {
+					NavigationLink {
+						CardManagerView(settings: settings)
+					} label: {
+						BlueprintNavRow(
+							"Manage cards",
+							subtitle: "Choose which containers appear, reorder, and set widget defaults",
+							systemImage: "square.grid.2x2"
+						)
+					}
+					.buttonStyle(.plain)
+				}
+
 				#if os(macOS)
 				BlueprintFormSection(
 					"App",

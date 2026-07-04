@@ -115,14 +115,30 @@ private struct SmallView: View {
 private struct MediumView: View {
 	@Environment(\.blueprint) private var bp
 	let dash: Dashboard
-	private let cols = [GridItem(.flexible()), GridItem(.flexible())]
+	let cards: [Card]
+	let layout: WidgetLayoutOption
+	let density: WidgetDensity
+
+	private var cols: [GridItem] {
+		layout == .list
+			? [GridItem(.flexible())]
+			: [GridItem(.flexible()), GridItem(.flexible())]
+	}
+	private var limit: Int {
+		switch (layout, density) {
+		case (.grid, .compact): 10
+		case (.grid, .regular): 8
+		case (.list, .compact): 5
+		case (.list, .regular): 4
+		}
+	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 8) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
-			LazyVGrid(columns: cols, alignment: .leading, spacing: 4) {
-				ForEach(dash.cards.prefix(8)) { ServiceChip(card: $0) }
+			LazyVGrid(columns: cols, alignment: .leading, spacing: density == .compact ? 3 : 4) {
+				ForEach(cards.prefix(limit)) { ServiceChip(card: $0) }
 			}
 			Spacer(minLength: 0)
 		}
@@ -235,27 +251,36 @@ private struct MiniCard: View {
 }
 
 /// iOS / macOS `systemLarge` — Scriptable-parity density: slim host line
-/// (CPU/RAM/DISK/UPTIME + UP), a `MiniCard` per service (CPU/MEM + key metrics +
-/// status), a compact dual-sparkline sensors block, and the updated footer.
+/// (CPU/RAM/DISK/UPTIME + UP), a `MiniCard` per selected tile (CPU/MEM + key
+/// metrics + status), a compact dual-sparkline sensors block, and the footer.
 private struct LargeView: View {
 	@Environment(\.blueprint) private var bp
 	let dash: Dashboard
+	let cards: [Card]
+	let layout: WidgetLayoutOption
+	let density: WidgetDensity
 	let updated: Date
-	private let cols = [GridItem(.flexible(), spacing: 5), GridItem(.flexible(), spacing: 5)]
-	/// The Scriptable large set, plus the HOME containers to fill the tile.
-	private static let ids = ["jellyfin", "qbittorrent", "pihole", "sonarr", "radarr",
-	                          "mosquitto", "zigbee2mqtt"]
 
-	private var cards: [Card] {
-		Self.ids.compactMap { id in dash.cards.first { $0.id == id } }
+	private var cols: [GridItem] {
+		layout == .list
+			? [GridItem(.flexible())]
+			: [GridItem(.flexible(), spacing: 5), GridItem(.flexible(), spacing: 5)]
+	}
+	private var limit: Int {
+		switch (layout, density) {
+		case (.grid, .compact): 10
+		case (.grid, .regular): 8
+		case (.list, .compact): 7
+		case (.list, .regular): 5
+		}
 	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 5) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
-			LazyVGrid(columns: cols, alignment: .leading, spacing: 5) {
-				ForEach(cards) { MiniCard(card: $0) }
+			LazyVGrid(columns: cols, alignment: .leading, spacing: density == .compact ? 4 : 5) {
+				ForEach(cards.prefix(limit)) { MiniCard(card: $0) }
 			}
 			if let s = dash.host.sensors, s.hasReadings {
 				CompactSensors(s: s)
@@ -272,15 +297,22 @@ private struct LargeView: View {
 private struct ExtraLargeView: View {
 	@Environment(\.blueprint) private var bp
 	let dash: Dashboard
+	let cards: [Card]
+	let layout: WidgetLayoutOption
+	let density: WidgetDensity
 	let updated: Date
-	private let cols = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
+
+	private var cols: [GridItem] {
+		let count = layout == .list ? 2 : (density == .compact ? 5 : 4)
+		return Array(repeating: GridItem(.flexible(), spacing: 8), count: count)
+	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 8) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
 			LazyVGrid(columns: cols, alignment: .leading, spacing: 8) {
-				ForEach(dash.groupedCards.flatMap(\.cards)) { MiniCard(card: $0) }
+				ForEach(cards.prefix(density == .compact ? 15 : 12)) { MiniCard(card: $0) }
 			}
 			if let s = dash.host.sensors, s.hasReadings {
 				CompactSensors(s: s)
@@ -354,9 +386,9 @@ struct DashboardWidgetEntryView: View {
 		if let dash = entry.dashboard {
 			switch family {
 			case .systemSmall: SmallView(dash: dash)
-			case .systemMedium: MediumView(dash: dash)
-			case .systemLarge: LargeView(dash: dash, updated: dash.generatedAtDate ?? entry.date)
-			case .systemExtraLarge: ExtraLargeView(dash: dash, updated: dash.generatedAtDate ?? entry.date)
+			case .systemMedium: MediumView(dash: dash, cards: entry.cards, layout: entry.layout, density: entry.density)
+			case .systemLarge: LargeView(dash: dash, cards: entry.cards, layout: entry.layout, density: entry.density, updated: dash.generatedAtDate ?? entry.date)
+			case .systemExtraLarge: ExtraLargeView(dash: dash, cards: entry.cards, layout: entry.layout, density: entry.density, updated: dash.generatedAtDate ?? entry.date)
 			#if os(iOS)
 			case .accessoryInline: Text(dash.healthLine)
 			case .accessoryCircular: CircularView(dash: dash)
