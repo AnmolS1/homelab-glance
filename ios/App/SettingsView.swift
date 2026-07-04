@@ -1,8 +1,9 @@
 import SwiftUI
 import GlanceKit
 
-/// Connection settings: mock toggle, aggregator base URL + token (Keychain),
-/// and a "Test connection" button that hits `/healthz`.
+/// Connection settings: mock toggle, aggregator base URL + tokens (Keychain),
+/// and a "Test connection" button that hits `/healthz`. Blueprint-styled —
+/// labels above full-width fields on graph paper, never a stock `Form`.
 struct SettingsView: View {
 	@Environment(\.blueprint) private var bp
 	@Environment(\.dismiss) private var dismiss
@@ -10,50 +11,54 @@ struct SettingsView: View {
 
 	@State private var testing = false
 	@State private var testResult: String?
+	@State private var testFailed = false
 
 	var body: some View {
-		Form {
-				Section {
-					Toggle("Use mock data", isOn: $settings.useMockData)
-				} footer: {
-					Text("Render bundled sample data with no server. Turn off to connect to your aggregator.")
+		ScrollView {
+			VStack(alignment: .leading, spacing: 20) {
+				BlueprintFormSection(
+					"Connection",
+					footer: "Render bundled sample data with no server. Turn off to connect to your aggregator."
+				) {
+					BlueprintToggleRow("Use mock data", isOn: $settings.useMockData)
 				}
 
-				Section("Aggregator") {
-					TextField("Base URL", text: $settings.baseURLString)
-						.textContentType(.URL)
-						.disableAutocorrection(true)
-						#if os(iOS)
-						.textInputAutocapitalization(.never)
-						.keyboardType(.URL)
-						#endif
-					SecureField("WIDGET_TOKEN", text: $settings.token)
-					SecureField("CONTROL_TOKEN (for start/stop/restart)", text: $settings.controlToken)
-
-					Button {
+				BlueprintFormSection(
+					"Aggregator",
+					footer: "The control token is needed only for start/stop/restart."
+				) {
+					BlueprintField("Base URL", text: $settings.baseURLString, kind: .mono,
+					               prompt: "https://glance.example.com", isURL: true)
+					BlueprintField("Widget token", text: $settings.token, kind: .monoSecure)
+					BlueprintField("Control token", text: $settings.controlToken, kind: .monoSecure)
+					BlueprintActionRow(
+						title: "Test connection",
+						busy: testing,
+						result: testResult,
+						isError: testFailed,
+						disabled: settings.baseURLString.isEmpty
+					) {
 						runTest()
-					} label: {
-						HStack {
-							Text("Test connection")
-							if testing { Spacer(); ProgressView() }
-						}
-					}
-					.disabled(testing || settings.baseURLString.isEmpty)
-
-					if let testResult {
-						Text(testResult).foregroundStyle(bp.ink60)
 					}
 				}
 				.disabled(settings.useMockData)
+				.opacity(settings.useMockData ? 0.5 : 1)
 
 				#if os(macOS)
-				Section {
-					Toggle("Hide Dock icon (menu-bar only)", isOn: $settings.hideDockIcon)
-				} footer: {
-					Text("Run from the menu bar without a Dock icon. The menu-bar panel stays available.")
+				BlueprintFormSection(
+					"App",
+					footer: "Run from the menu bar without a Dock icon. The menu-bar panel stays available."
+				) {
+					BlueprintToggleRow("Hide Dock icon (menu-bar only)", isOn: $settings.hideDockIcon)
 				}
 				#endif
 			}
+			.padding(16)
+			.frame(maxWidth: 520)
+			.frame(maxWidth: .infinity)
+		}
+		.scrollContentBackground(.hidden)
+		.background(GraphPaperBackground())
 		.navigationTitle("Settings")
 		.toolbar {
 			ToolbarItem(placement: .confirmationAction) {
@@ -65,6 +70,7 @@ struct SettingsView: View {
 	private func runTest() {
 		testing = true
 		testResult = nil
+		testFailed = false
 		let urlString = settings.baseURLString
 		let token = settings.token
 		Task {
@@ -75,6 +81,7 @@ struct SettingsView: View {
 				ok = false
 			}
 			testResult = ok ? "Reachable ✓" : "Not reachable — check URL and connectivity."
+			testFailed = !ok
 			testing = false
 		}
 	}

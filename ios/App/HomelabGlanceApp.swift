@@ -16,7 +16,6 @@ struct HomelabGlanceApp: App {
 	var body: some Scene {
 		WindowGroup {
 			DashboardView(settings: settings, router: router)
-				.preferredColorScheme(.dark)
 				// Widget cards deep-link here: homelabglance://logs/<container>.
 				.onOpenURL { url in
 					if let link = DeepLink(url: url) { router.pending = link }
@@ -36,7 +35,6 @@ struct HomelabGlanceApp: App {
 		MenuBarExtra("Homelab Glance", image: "MenuBarMark") {
 			DashboardView(settings: settings, inPanel: true)
 				.frame(width: 480, height: 720)
-				.preferredColorScheme(.dark)
 		}
 		.menuBarExtraStyle(.window)
 		#endif
