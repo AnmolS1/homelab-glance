@@ -1,0 +1,54 @@
+# Self-contained deploy for the homelab-glance aggregator + Docker socket-proxy.
+#
+#   1. cp .env.example .env   (in this directory — or reuse your stack's .env)
+#   2. Set WIDGET_TOKEN (openssl rand -hex 32). That's the only required value.
+#   3. docker compose up -d
+#
+# With just WIDGET_TOKEN + the socket-proxy you get auto-detected GENERIC
+# container cards (name/state/CPU/mem/logs) in the app — no per-service
+# credentials needed. Rich service cards (Jellyfin, Sonarr, …) and the
+# start/stop/restart control plane are opt-in via extra env vars; see README.md.
+
+services:
+  glance:
+    # Published multi-arch image (see .github/workflows/publish.yml). To build
+    # from source instead, comment `image:` and uncomment `build:`.
+    image: ghcr.io/anmols1/homelab-glance-aggregator:latest
+    # build: .
+    container_name: glance
+    env_file: .env
+    environment:
+      - TZ=Etc/UTC
+      # The aggregator reaches Docker only through the socket-proxy below —
+      # the raw socket is never mounted into this container.
+      - DOCKER_PROXY_URL=http://dockerproxy:2375
+    # Optional: mount a data drive read-only so the dashboard can report its
+    # disk usage (EXPANSION_PATH defaults to /host/expansion).
+    # volumes:
+    #   - /your/data/drive:/host/expansion:ro
+    ports:
+      - "8765:8765"
+    depends_on:
+      - dockerproxy
+    restart: unless-stopped
+
+  # Docker socket-proxy: the ONLY container that sees the raw Docker socket.
+  # A network-reachable Docker API is root-equivalent on the host — keep this
+  # proxy unpublished (no host port) and grant it the minimum verbs.
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: dockerproxy
+    environment:
+      - CONTAINERS=1   # list + logs + stats (all the reads the app needs)
+      - EXEC=0         # never enable in-container shells
+      # ── Writes (start/stop/restart from the app) are OPT-IN. To enable,
+      # uncomment these AND set CONTROL_TOKEN in .env:
+      # - POST=1
+      # - ALLOW_START=1
+      # - ALLOW_STOP=1
+      # - ALLOW_RESTARTS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    # No `ports:` on purpose — reachable only as http://dockerproxy:2375 on the
+    # internal compose network.

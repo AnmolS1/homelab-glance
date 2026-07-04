@@ -93,6 +93,49 @@ def audit_entries() -> List[Dict[str, Any]]:
 	return list(_audit)
 
 
+def compute_stats(payload: Dict[str, Any]) -> Dict[str, Any]:
+	"""Reduce a Docker stats payload to {cpu_pct, mem_used_mb, mem_limit_mb}.
+
+	Pure function so it's unit-testable. CPU% follows `docker stats`:
+	(cpu_delta / system_delta) * online_cpus * 100 — valid only when the
+	payload has a populated precpu_stats (i.e. fetched with stream=false,
+	NOT one-shot=true, which zeroes precpu and makes the delta meaningless).
+	Memory subtracts reclaimable page cache (cgroup v2 `inactive_file`,
+	v1 `total_inactive_file`/`cache`) like `docker stats` does.
+	"""
+	cpu = payload.get("cpu_stats") or {}
+	pre = payload.get("precpu_stats") or {}
+	cpu_pct = None
+	try:
+		cpu_delta = cpu["cpu_usage"]["total_usage"] - pre["cpu_usage"]["total_usage"]
+		sys_delta = cpu.get("system_cpu_usage", 0) - pre.get("system_cpu_usage", 0)
+		ncpu = (
+			cpu.get("online_cpus")
+			or len((cpu.get("cpu_usage") or {}).get("percpu_usage") or [])
+			or 1
+		)
+		if sys_delta > 0 and cpu_delta >= 0:
+			cpu_pct = round(cpu_delta / sys_delta * ncpu * 100, 1)
+	except (KeyError, TypeError):
+		cpu_pct = None
+
+	mem = payload.get("memory_stats") or {}
+	mem_used_mb = None
+	mem_limit_mb = None
+	usage = mem.get("usage")
+	if isinstance(usage, (int, float)):
+		mstats = mem.get("stats") or {}
+		reclaimable = mstats.get(
+			"inactive_file", mstats.get("total_inactive_file", mstats.get("cache", 0))
+		) or 0
+		mem_used_mb = round(max(0, usage - reclaimable) / (1024 * 1024), 1)
+	limit = mem.get("limit")
+	if isinstance(limit, (int, float)) and limit > 0:
+		mem_limit_mb = round(limit / (1024 * 1024), 1)
+
+	return {"cpu_pct": cpu_pct, "mem_used_mb": mem_used_mb, "mem_limit_mb": mem_limit_mb}
+
+
 class DockerProxyClient:
 	def __init__(self, client: httpx.AsyncClient) -> None:
 		self._client = client
@@ -124,6 +167,24 @@ class DockerProxyClient:
 				"controllable": is_controllable(name),
 			})
 		return out
+
+	async def stats(self, container: str) -> Dict[str, Any]:
+		"""One CPU/memory sample for a container, via the socket-proxy's
+		`/containers/{id}/stats?stream=false`. Covered by CONTAINERS=1 — no
+		extra proxy privilege needed. `stream=false` makes the daemon take two
+		samples (~1s) so precpu_stats is valid and CPU% is computable."""
+		try:
+			resp = await self._client.get(
+				f"{self._base()}/containers/{container}/stats",
+				params={"stream": "false"},
+				timeout=15,
+			)
+			resp.raise_for_status()
+		except DockerControlError:
+			raise
+		except Exception as exc:
+			raise DockerControlError(502, f"Docker proxy error: {exc}")
+		return compute_stats(resp.json())
 
 	async def logs(self, container: str, tail: int = 200) -> str:
 		try:

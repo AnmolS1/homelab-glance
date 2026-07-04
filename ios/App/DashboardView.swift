@@ -137,6 +137,13 @@ struct DashboardView: View {
 
 	private func loaded(_ dash: Dashboard, _ bp: BlueprintColors) -> some View {
 		let grouped = Dictionary(grouping: dash.cards, by: { $0.group ?? "Other" })
+		// Rich-when-detected, else generic: containers whose service already has
+		// a rich card are skipped; the rest render as generic container tiles.
+		let genericTiles: [(DockerContainer, ServiceType?)] = mergeTiles(
+			cards: dash.cards, containers: dash.containers ?? []
+		).compactMap {
+			if case .generic(let container, let type) = $0 { (container, type) } else { nil }
+		}
 		return VStack(alignment: .leading, spacing: 18) {
 			HostHeaderView(host: dash.host)
 
@@ -155,6 +162,17 @@ struct DashboardView: View {
 				}
 			}
 
+			if !genericTiles.isEmpty {
+				VStack(alignment: .leading, spacing: 8) {
+					SectionLabel("Containers")
+					LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+						ForEach(genericTiles, id: \.0.name) { container, type in
+							GenericContainerTile(container: container, serviceType: type, settings: settings)
+						}
+					}
+				}
+			}
+
 			if let sensors = dash.host.sensors {
 				SensorsView(sensors: sensors)
 			}
@@ -165,6 +183,42 @@ struct DashboardView: View {
 					.font(Typography.mono(10, weight: .regular))
 					.foregroundStyle(bp.ink60.opacity(0.7))
 			}
+		}
+	}
+}
+
+/// A generic container card wired for the app: tap opens its logs, a context
+/// menu offers start/stop/restart when the container is controllable, and one
+/// CPU/mem sample loads lazily after the card appears (the ~1s two-sample
+/// fetch never blocks rendering, and the widget never does this at all).
+private struct GenericContainerTile: View {
+	let container: DockerContainer
+	let serviceType: ServiceType?
+	let settings: AppSettings
+
+	@State private var stats: ContainerStats?
+
+	var body: some View {
+		NavigationLink(value: DashRoute.logs(container: container.name)) {
+			GenericContainerCardView(container: container, serviceType: serviceType, stats: stats)
+		}
+		.buttonStyle(.plain)
+		.contextMenu {
+			if container.controllable {
+				ForEach(ContainerAction.allCases, id: \.self) { action in
+					Button {
+						let provider = settings.makeControlProvider()
+						Task { _ = try? await provider.perform(action, on: container.name) }
+					} label: {
+						Label(action.label, systemImage: action.systemImage)
+					}
+				}
+			}
+		}
+		.task(id: container.name) {
+			guard container.isRunning, stats == nil else { return }
+			let provider = settings.makeControlProvider()
+			stats = try? await provider.stats(container: container.name)
 		}
 	}
 }

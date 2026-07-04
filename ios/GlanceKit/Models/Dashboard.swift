@@ -11,16 +11,20 @@ public struct Dashboard: Codable, Sendable, Equatable {
 	public var pollSeconds: Int?
 	public var host: HostSummary
 	public var cards: [Card]
+	/// Full auto-detected container inventory (nil for aggregators that predate
+	/// it or run without a socket-proxy) — drives the generic container cards.
+	public var containers: [DockerContainer]?
 
-	public init(generatedAt: Double? = nil, pollSeconds: Int? = nil, host: HostSummary = HostSummary(), cards: [Card] = []) {
+	public init(generatedAt: Double? = nil, pollSeconds: Int? = nil, host: HostSummary = HostSummary(), cards: [Card] = [], containers: [DockerContainer]? = nil) {
 		self.generatedAt = generatedAt
 		self.pollSeconds = pollSeconds
 		self.host = host
 		self.cards = cards
+		self.containers = containers
 	}
 
 	enum CodingKeys: String, CodingKey {
-		case generatedAt, pollSeconds, host, cards
+		case generatedAt, pollSeconds, host, cards, containers
 	}
 
 	public init(from decoder: Decoder) throws {
@@ -29,6 +33,7 @@ public struct Dashboard: Codable, Sendable, Equatable {
 		pollSeconds = try c.decodeIfPresent(Int.self, forKey: .pollSeconds)
 		host = try c.decodeIfPresent(HostSummary.self, forKey: .host) ?? HostSummary()
 		cards = try c.decodeIfPresent([Card].self, forKey: .cards) ?? []
+		containers = try c.decodeIfPresent([DockerContainer].self, forKey: .containers)
 	}
 
 	/// Date form of `generatedAt`, if present.

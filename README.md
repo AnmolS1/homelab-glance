@@ -1,18 +1,20 @@
 # homelab-glance
 
-A self-hosted widget system that surfaces live homelab server stats on a macOS
-desktop (via [Übersicht](https://tracesof.net/uebersicht/)) and an iOS home-screen
-widget (via [Scriptable](https://scriptable.app/)), both fed by a single FastAPI
-aggregator. Styled to match the [gethomepage/Homepage](https://gethomepage.dev/)
-stone/dark theme.
+Your homelab, at a glance: a **native iOS + macOS app** (with home-screen and
+menu-bar widgets) backed by a small self-hosted **FastAPI aggregator**. The app
+ships on the App Store; the aggregator is this repo's open-source server half —
+see the **[aggregator self-hosting guide](aggregator/README.md)** to stand it
+up. Containers are auto-detected: known services (Jellyfin, Sonarr, …) get rich
+cards when their poller is configured, everything else gets a generic container
+card (state, CPU/mem, logs) with zero per-service setup.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│   Beszel  Jellyfin  qBittorrent  Pi-hole  Sonarr  Radarr     │
-│      ↘        ↓         ↓           ↓       ↓      ↓        │
+│   Docker socket-proxy   Beszel  Jellyfin  qBittorrent  …     │
+│            ↘               ↓        ↓         ↓              │
 │              FastAPI aggregator  (:8765)                      │
 │                 ↙                     ↘                       │
-│         Übersicht (macOS)        Scriptable (iOS)             │
+│    Homelab Glance app (iOS/macOS)   widgets + controls       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -26,9 +28,10 @@ blanks the rest of the dashboard.
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `aggregator/` | FastAPI + httpx | Polls all services, merges into one JSON snapshot |
-| `ubersicht/glance.jsx` | Übersicht widget | Full dashboard on the macOS desktop |
-| `scriptable/glance.js` | Scriptable widget | Large iOS home-screen widget |
+| `aggregator/` | FastAPI + httpx | Polls all services, merges into one JSON snapshot — [setup guide](aggregator/README.md) |
+| `ios/` | SwiftUI (XcodeGen) | Native iOS/macOS app, home-screen widgets, menu-bar dashboard, Docker controls |
+| `ubersicht/glance.jsx` | Übersicht widget | Legacy: full dashboard on the macOS desktop |
+| `scriptable/glance.js` | Scriptable widget | Legacy: large iOS home-screen widget |
 
 The aggregator runs as a Docker container. All source services are reached via
 environment-configured URLs — typically the server's LAN IP or Tailscale IP plus

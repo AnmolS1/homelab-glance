@@ -1,9 +1,23 @@
 import Foundation
 
+/// One CPU/memory sample from `GET /api/docker/{container}/stats`.
+public struct ContainerStats: Codable, Sendable, Equatable {
+	public var cpuPct: Double?
+	public var memUsedMb: Double?
+	public var memLimitMb: Double?
+
+	public init(cpuPct: Double? = nil, memUsedMb: Double? = nil, memLimitMb: Double? = nil) {
+		self.cpuPct = cpuPct
+		self.memUsedMb = memUsedMb
+		self.memLimitMb = memLimitMb
+	}
+}
+
 /// The Docker control plane, abstracted for live vs mock.
 public protocol DockerControlProviding: Sendable {
 	func containers() async throws -> [DockerContainer]
 	func logs(container: String, tail: Int) async throws -> String
+	func stats(container: String) async throws -> ContainerStats
 	func perform(_ action: ContainerAction, on container: String) async throws -> AuditEntry
 	func audit() async throws -> [AuditEntry]
 }

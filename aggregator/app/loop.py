@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Tuple, cast
 import httpx
 
 from .config import settings
+from .docker_control import DockerControlError, DockerProxyClient
 from .store import set_snapshot
 from .pollers.beszel import BeszelPoller
 from .pollers.jellyfin import JellyfinPoller
@@ -61,6 +62,22 @@ def _enrich(card: Dict[str, Any], container_stats: Dict[str, Dict[str, Any]]) ->
 	}
 
 
+async def _list_containers(docker: "DockerProxyClient | None") -> List[Dict[str, Any]]:
+	"""Best-effort full container inventory for the snapshot. Deploys without a
+	socket-proxy (DOCKER_PROXY_URL unset) simply get an empty list — the rich
+	cards keep working and the client shows no generic container cards."""
+	if docker is None:
+		return []
+	try:
+		return await docker.list_containers()
+	except DockerControlError as exc:
+		logger.debug("Container inventory unavailable: %s", exc.detail)
+		return []
+	except Exception:
+		logger.exception("Container inventory fetch failed")
+		return []
+
+
 async def poll_once(
 	beszel: BeszelPoller,
 	jellyfin: JellyfinPoller,
@@ -69,6 +86,7 @@ async def poll_once(
 	sonarr: ArrPoller,
 	radarr: ArrPoller,
 	prowlarr: ArrPoller,
+	docker: "DockerProxyClient | None" = None,
 ) -> None:
 	"""Run all pollers concurrently, merge, and write to the snapshot store."""
 	results = await asyncio.gather(
@@ -80,6 +98,7 @@ async def poll_once(
 		radarr.poll(),
 		prowlarr.poll(),
 	)
+	containers = await _list_containers(docker)
 
 	host_dict, container_stats = cast(
 		Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]], results[0]
@@ -118,9 +137,12 @@ async def poll_once(
 		"poll_seconds": settings.poll_seconds,
 		"host": host_dict,
 		"cards": enriched,
+		# Full auto-detected container inventory so the client can render
+		# generic cards for containers no rich poller covers.
+		"containers": containers,
 	}
 	await set_snapshot(snapshot)
-	logger.debug("Snapshot updated — %d cards", len(enriched))
+	logger.debug("Snapshot updated — %d cards, %d containers", len(enriched), len(containers))
 
 
 async def poll_loop() -> None:
@@ -164,9 +186,11 @@ async def poll_loop() -> None:
 			wanted_field="grabs",
 		)
 
+		docker = DockerProxyClient(client) if settings.docker_proxy_url else None
+
 		while True:
 			try:
-				await poll_once(beszel, jellyfin, qbit, pihole, sonarr, radarr, prowlarr)
+				await poll_once(beszel, jellyfin, qbit, pihole, sonarr, radarr, prowlarr, docker=docker)
 			except Exception:
 				logger.exception("Unexpected error in poll_once")
 			await asyncio.sleep(settings.poll_seconds)

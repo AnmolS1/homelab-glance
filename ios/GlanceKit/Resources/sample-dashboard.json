@@ -14,8 +14,70 @@
     "sensors": {
       "nvme_temp": 41,
       "gpu_temp": 53,
-      "nvme_temp_history": [38, 39, 39, 40, 41, 41, 40, 42, 43, 42, 41, 40, 41, 42, 43, 44, 43, 42, 41, 41, 42, 43, 42, 41, 40, 41, 42, 41, 41, 41],
-      "gpu_temp_history": [49, 50, 51, 52, 54, 55, 53, 52, 51, 53, 56, 58, 57, 55, 54, 53, 52, 51, 52, 54, 55, 56, 55, 54, 53, 52, 53, 54, 53, 53],
+      "nvme_temp_history": [
+        38,
+        39,
+        39,
+        40,
+        41,
+        41,
+        40,
+        42,
+        43,
+        42,
+        41,
+        40,
+        41,
+        42,
+        43,
+        44,
+        43,
+        42,
+        41,
+        41,
+        42,
+        43,
+        42,
+        41,
+        40,
+        41,
+        42,
+        41,
+        41,
+        41
+      ],
+      "gpu_temp_history": [
+        49,
+        50,
+        51,
+        52,
+        54,
+        55,
+        53,
+        52,
+        51,
+        53,
+        56,
+        58,
+        57,
+        55,
+        54,
+        53,
+        52,
+        51,
+        52,
+        54,
+        55,
+        56,
+        55,
+        54,
+        53,
+        52,
+        53,
+        54,
+        53,
+        53
+      ],
       "gpu_load_pct": 12,
       "gpu_power_w": 95,
       "gpu_vram_used_mb": 2048,
@@ -32,7 +94,14 @@
       "cpu_pct": 2.1,
       "mem_mb": 512,
       "container_running": true,
-      "data": { "streams": 1, "now_playing": [{ "title": "The Bear — S03E01" }] }
+      "data": {
+        "streams": 1,
+        "now_playing": [
+          {
+            "title": "The Bear \u2014 S03E01"
+          }
+        ]
+      }
     },
     {
       "id": "qbittorrent",
@@ -43,7 +112,12 @@
       "cpu_pct": 5.6,
       "mem_mb": 740,
       "container_running": true,
-      "data": { "dl_mibps": 4.2, "ul_mibps": 1.1, "active": 3, "seeding": 12 }
+      "data": {
+        "dl_mibps": 4.2,
+        "ul_mibps": 1.1,
+        "active": 3,
+        "seeding": 12
+      }
     },
     {
       "id": "sonarr",
@@ -54,7 +128,10 @@
       "cpu_pct": 1.2,
       "mem_mb": 310,
       "container_running": true,
-      "data": { "queue": 2, "wanted": 5 }
+      "data": {
+        "queue": 2,
+        "wanted": 5
+      }
     },
     {
       "id": "radarr",
@@ -65,7 +142,10 @@
       "cpu_pct": 1.0,
       "mem_mb": 298,
       "container_running": true,
-      "data": { "queue": 0, "missing": 8 }
+      "data": {
+        "queue": 0,
+        "missing": 8
+      }
     },
     {
       "id": "prowlarr",
@@ -76,7 +156,10 @@
       "cpu_pct": 0.7,
       "mem_mb": 180,
       "container_running": true,
-      "data": { "queue": 0, "grabs": 134 }
+      "data": {
+        "queue": 0,
+        "grabs": 134
+      }
     },
     {
       "id": "pihole",
@@ -87,7 +170,11 @@
       "cpu_pct": 1.8,
       "mem_mb": 96,
       "container_running": true,
-      "data": { "blocked_pct": 14.3, "queries": 84210, "gravity": 150000 }
+      "data": {
+        "blocked_pct": 14.3,
+        "queries": 84210,
+        "gravity": 150000
+      }
     },
     {
       "id": "mosquitto",
@@ -110,6 +197,40 @@
       "mem_mb": null,
       "container_running": false,
       "data": {}
+    }
+  ],
+  "containers": [
+    {
+      "id": "a1b2c3d4e5f6",
+      "name": "jellyfin",
+      "image": "jellyfin/jellyfin:latest",
+      "state": "running",
+      "status": "Up 2 days",
+      "controllable": true
+    },
+    {
+      "id": "b2c3d4e5f6a1",
+      "name": "acme-app",
+      "image": "ghcr.io/acme/acme-app:1.4.2",
+      "state": "running",
+      "status": "Up 5 hours",
+      "controllable": true
+    },
+    {
+      "id": "c3d4e5f6a1b2",
+      "name": "backup-runner",
+      "image": "offen/docker-volume-backup:v2",
+      "state": "exited",
+      "status": "Exited (0) 3 hours ago",
+      "controllable": true
+    },
+    {
+      "id": "d4e5f6a1b2c3",
+      "name": "dockerproxy",
+      "image": "tecnativa/docker-socket-proxy:latest",
+      "state": "running",
+      "status": "Up 2 days",
+      "controllable": false
     }
   ]
 }
