@@ -7,6 +7,8 @@ import AppKit
 @main
 struct HomelabGlanceApp: App {
 	@State private var settings = AppSettings.shared
+	@State private var router = DeepLinkRouter()
+	@State private var showOnboarding = false
 
 	init() {
 		BlueprintFonts.registerAll()
@@ -14,8 +16,15 @@ struct HomelabGlanceApp: App {
 
 	var body: some Scene {
 		WindowGroup {
-			DashboardView(settings: settings)
-				.preferredColorScheme(.dark)
+			DashboardView(settings: settings, router: router)
+				.onAppear { showOnboarding = !settings.hasCompletedOnboarding }
+				.sheet(isPresented: $showOnboarding) {
+					OnboardingSheet(settings: settings)
+				}
+				// Widget cards deep-link here: homelabglance://logs/<container>.
+				.onOpenURL { url in
+					if let link = DeepLink(url: url) { router.pending = link }
+				}
 				#if os(macOS)
 				.task { applyDockPolicy() }
 				.onChange(of: settings.hideDockIcon) { _, _ in applyDockPolicy() }
@@ -31,7 +40,6 @@ struct HomelabGlanceApp: App {
 		MenuBarExtra("Homelab Glance", image: "MenuBarMark") {
 			DashboardView(settings: settings, inPanel: true)
 				.frame(width: 480, height: 720)
-				.preferredColorScheme(.dark)
 		}
 		.menuBarExtraStyle(.window)
 		#endif

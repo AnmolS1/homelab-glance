@@ -4,7 +4,15 @@ import GlanceKit
 
 struct GlanceWidget: Widget {
 	var body: some WidgetConfiguration {
-		StaticConfiguration(kind: "HomelabGlanceDashboard", provider: DashboardTimelineProvider()) { entry in
+		// Same kind string as the previous StaticConfiguration — WidgetKit
+		// migrates already-placed widgets in place, initializing the intent
+		// with its defaults (all-visible containers, grid, regular), which
+		// reproduces the pre-migration behavior exactly.
+		AppIntentConfiguration(
+			kind: "HomelabGlanceDashboard",
+			intent: GlanceConfigurationIntent.self,
+			provider: DashboardTimelineProvider()
+		) { entry in
 			DashboardWidgetEntryView(entry: entry)
 		}
 		.configurationDisplayName("Homelab Glance")
@@ -18,9 +26,8 @@ struct GlanceWidget: Widget {
 		[.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge,
 		 .accessoryInline, .accessoryCircular, .accessoryRectangular]
 		#else
-		// macOS doesn't render .systemExtraLarge cleanly here; Large is the biggest
-		// Mac widget. The full desktop view is the menu-bar panel + window.
-		[.systemSmall, .systemMedium, .systemLarge]
+		// macOS supports the wide .systemExtraLarge tile too (renders ExtraLargeView).
+		[.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge]
 		#endif
 	}
 }

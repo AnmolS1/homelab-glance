@@ -97,6 +97,19 @@ async def docker_containers(request: Request) -> Dict[str, Any]:
 			raise HTTPException(status_code=exc.status, detail=exc.detail)
 
 
+@app.get("/api/docker/{container}/stats")
+async def docker_stats(container: str, request: Request) -> Dict[str, Any]:
+	"""One CPU/memory sample for a generic container card. Read-only —
+	covered by the proxy's CONTAINERS=1, same as the list and logs calls."""
+	_require_widget_token(request)
+	async with httpx.AsyncClient() as client:
+		try:
+			stats = await DockerProxyClient(client).stats(container)
+			return {"container": container, **stats}
+		except DockerControlError as exc:
+			raise HTTPException(status_code=exc.status, detail=exc.detail)
+
+
 @app.get("/api/docker/{container}/logs")
 async def docker_logs(container: str, request: Request, tail: int = 200) -> Dict[str, Any]:
 	_require_widget_token(request)

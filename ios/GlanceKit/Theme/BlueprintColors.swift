@@ -44,7 +44,9 @@ public struct BlueprintColors: Sendable, Equatable {
 		graph: Color(hex: "#EEF0EC"),
 		card: Color(hex: "#FFFFFF"),
 		ink: Color(hex: "#1B2A33"),
-		ink60: Color(hex: "#1B2A33", alpha: 0.62),
+		// 0.66 (not the spec's 0.62) so 12–13pt secondary text clears WCAG AA
+		// (4.5:1) on both card and graph grounds; matches the dark theme's alpha.
+		ink60: Color(hex: "#1B2A33", alpha: 0.66),
 		crease: Color(hex: "#2E5E8C"),
 		creaseLine: Color(hex: "#2E5E8C", alpha: 0.20),
 		crane: Color(hex: "#E84A27"),

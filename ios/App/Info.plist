@@ -24,6 +24,19 @@
 	<true/>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<!-- Custom URL scheme so widget cards can deep-link into the app (e.g.
+	     homelabglance://logs/<container>). Handled by onOpenURL in HomelabGlanceApp. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>dev.ponderance.homelabglance</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>homelabglance</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>
@@ -41,10 +54,24 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Connecting to a LAN/Tailscale server triggers the iOS local-network
+	     prompt; this string explains why. The first connection attempt (not app
+	     launch) is what surfaces the prompt. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Homelab Glance connects to your aggregator server on your local network to show service status and control containers.</string>
+	<!-- Standard HTTPS only — export-compliance exempt. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- Scoped exception: allow plain HTTP only to Tailscale tailnet hosts.
-		     Cloudflare Access hostnames are HTTPS and need no exception. -->
+		<!-- Posture: require HTTPS by default. NSAllowsLocalNetworking permits
+		     cleartext to RFC-1918/.local hosts (a user's LAN server) without a
+		     global exception; the ts.net entry additionally allows plain HTTP to
+		     Tailscale MagicDNS hosts, which ride the encrypted WireGuard tunnel
+		     (ts.net is public DNS, so NSAllowsLocalNetworking doesn't cover it).
+		     Never NSAllowsArbitraryLoads. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>ts.net</key>

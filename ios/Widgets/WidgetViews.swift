@@ -4,27 +4,46 @@ import GlanceKit
 
 // MARK: - Compact pieces
 
-/// A compact status chip: status dot + service name + a short metric.
+/// A compact status chip: status dot + service name + a short metric. Tapping it
+/// deep-links to the service's logs in the app.
 private struct ServiceChip: View {
 	@Environment(\.blueprint) private var bp
 	let card: Card
 
 	var body: some View {
-		HStack(spacing: 5) {
-			Circle()
-				.fill(bp.statusColor(card.status, stale: card.stale))
-				.frame(width: 6, height: 6)
-			Text(card.title)
-				.font(Typography.text(11, weight: .medium))
-				.foregroundStyle(bp.ink)
-				.lineLimit(1)
-			Spacer(minLength: 2)
-			if let m = card.widgetMetric {
-				Text(m)
-					.font(Typography.mono(10, weight: .semibold))
-					.foregroundStyle(bp.ink60)
+		CardLink(card: card) {
+			HStack(spacing: 5) {
+				Circle()
+					.fill(bp.statusColor(card.status, stale: card.stale))
+					.frame(width: 6, height: 6)
+				Text(card.title)
+					.font(Typography.text(11, weight: .medium))
+					.foregroundStyle(bp.ink)
 					.lineLimit(1)
+				Spacer(minLength: 2)
+				if let m = card.widgetMetric {
+					Text(m)
+						.font(Typography.mono(10, weight: .semibold))
+						.foregroundStyle(bp.ink60)
+						.lineLimit(1)
+				}
 			}
+		}
+	}
+}
+
+/// Wraps a card view in a `Link` to the service's logs. `.widgetURL` only allows
+/// one URL per widget, so the multi-card families use per-card `Link`s instead;
+/// `Link` inside a widget is supported on iOS 17 / macOS 14.
+private struct CardLink<Content: View>: View {
+	let card: Card
+	@ViewBuilder let content: () -> Content
+
+	var body: some View {
+		if let url = DeepLink.logs(container: card.id).url {
+			Link(destination: url) { content() }
+		} else {
+			content()
 		}
 	}
 }
@@ -96,14 +115,30 @@ private struct SmallView: View {
 private struct MediumView: View {
 	@Environment(\.blueprint) private var bp
 	let dash: Dashboard
-	private let cols = [GridItem(.flexible()), GridItem(.flexible())]
+	let cards: [Card]
+	let layout: WidgetLayoutOption
+	let density: WidgetDensity
+
+	private var cols: [GridItem] {
+		layout == .list
+			? [GridItem(.flexible())]
+			: [GridItem(.flexible()), GridItem(.flexible())]
+	}
+	private var limit: Int {
+		switch (layout, density) {
+		case (.grid, .compact): 10
+		case (.grid, .regular): 8
+		case (.list, .compact): 5
+		case (.list, .regular): 4
+		}
+	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 8) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
-			LazyVGrid(columns: cols, alignment: .leading, spacing: 4) {
-				ForEach(dash.cards.prefix(8)) { ServiceChip(card: $0) }
+			LazyVGrid(columns: cols, alignment: .leading, spacing: density == .compact ? 3 : 4) {
+				ForEach(cards.prefix(limit)) { ServiceChip(card: $0) }
 			}
 			Spacer(minLength: 0)
 		}
@@ -188,53 +223,64 @@ private struct MiniCard: View {
 	}
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 1) {
-			HStack(spacing: 4) {
-				Text(card.title).font(Typography.display(11, weight: .semibold))
-					.foregroundStyle(bp.ink).lineLimit(1)
-				Spacer(minLength: 2)
-				StatusBadge(status: card.status, stale: card.stale)
+		CardLink(card: card) {
+			VStack(alignment: .leading, spacing: 1) {
+				HStack(spacing: 4) {
+					Text(card.title).font(Typography.display(11, weight: .semibold))
+						.foregroundStyle(bp.ink).lineLimit(1)
+					Spacer(minLength: 2)
+					StatusBadge(status: card.status, stale: card.stale)
+				}
+				if card.cpuPct != nil || card.memMb != nil {
+					Text("CPU \(Format.num(card.cpuPct, unit: "%")) · MEM \(Format.memGB(card.memMb))")
+						.font(Typography.mono(8, weight: .regular)).foregroundStyle(bp.ink60).lineLimit(1)
+				}
+				ForEach(metrics, id: \.self) { m in
+					Text(m).font(Typography.mono(9, weight: .semibold)).foregroundStyle(bp.ink)
+						.lineLimit(1).minimumScaleFactor(0.7)
+				}
 			}
-			if card.cpuPct != nil || card.memMb != nil {
-				Text("CPU \(Format.num(card.cpuPct, unit: "%")) · MEM \(Format.memGB(card.memMb))")
-					.font(Typography.mono(8, weight: .regular)).foregroundStyle(bp.ink60).lineLimit(1)
-			}
-			ForEach(metrics, id: \.self) { m in
-				Text(m).font(Typography.mono(9, weight: .semibold)).foregroundStyle(bp.ink)
-					.lineLimit(1).minimumScaleFactor(0.7)
-			}
+			.padding(7)
+			// Fill the grid cell so cards in the same row share the tallest's height.
+			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+			.background(bp.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+			.overlay { RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(borderColor, lineWidth: 1) }
+			.opacity(card.status == .down ? 0.6 : 1)
 		}
-		.padding(7)
-		// Fill the grid cell so cards in the same row share the tallest's height.
-		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-		.background(bp.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-		.overlay { RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(borderColor, lineWidth: 1) }
-		.opacity(card.status == .down ? 0.6 : 1)
 	}
 }
 
 /// iOS / macOS `systemLarge` — Scriptable-parity density: slim host line
-/// (CPU/RAM/DISK/UPTIME + UP), a `MiniCard` per service (CPU/MEM + key metrics +
-/// status), a compact dual-sparkline sensors block, and the updated footer.
+/// (CPU/RAM/DISK/UPTIME + UP), a `MiniCard` per selected tile (CPU/MEM + key
+/// metrics + status), a compact dual-sparkline sensors block, and the footer.
 private struct LargeView: View {
 	@Environment(\.blueprint) private var bp
 	let dash: Dashboard
+	let cards: [Card]
+	let layout: WidgetLayoutOption
+	let density: WidgetDensity
 	let updated: Date
-	private let cols = [GridItem(.flexible(), spacing: 5), GridItem(.flexible(), spacing: 5)]
-	/// The Scriptable large set, plus the HOME containers to fill the tile.
-	private static let ids = ["jellyfin", "qbittorrent", "pihole", "sonarr", "radarr",
-	                          "mosquitto", "zigbee2mqtt"]
 
-	private var cards: [Card] {
-		Self.ids.compactMap { id in dash.cards.first { $0.id == id } }
+	private var cols: [GridItem] {
+		layout == .list
+			? [GridItem(.flexible())]
+			: [GridItem(.flexible(), spacing: 5), GridItem(.flexible(), spacing: 5)]
+	}
+	private var limit: Int {
+		switch (layout, density) {
+		case (.grid, .compact): 10
+		case (.grid, .regular): 8
+		case (.list, .compact): 7
+		case (.list, .regular): 5
+		}
 	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 5) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
-			LazyVGrid(columns: cols, alignment: .leading, spacing: 5) {
-				ForEach(cards) { MiniCard(card: $0) }
+			LazyVGrid(columns: cols, alignment: .leading, spacing: density == .compact ? 4 : 5) {
+				ForEach(cards.prefix(limit)) { MiniCard(card: $0) }
 			}
 			if let s = dash.host.sensors, s.hasReadings {
 				CompactSensors(s: s)
@@ -251,15 +297,22 @@ private struct LargeView: View {
 private struct ExtraLargeView: View {
 	@Environment(\.blueprint) private var bp
 	let dash: Dashboard
+	let cards: [Card]
+	let layout: WidgetLayoutOption
+	let density: WidgetDensity
 	let updated: Date
-	private let cols = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
+
+	private var cols: [GridItem] {
+		let count = layout == .list ? 2 : (density == .compact ? 5 : 4)
+		return Array(repeating: GridItem(.flexible(), spacing: 8), count: count)
+	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 8) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
 			LazyVGrid(columns: cols, alignment: .leading, spacing: 8) {
-				ForEach(dash.groupedCards.flatMap(\.cards)) { MiniCard(card: $0) }
+				ForEach(cards.prefix(density == .compact ? 15 : 12)) { MiniCard(card: $0) }
 			}
 			if let s = dash.host.sensors, s.hasReadings {
 				CompactSensors(s: s)
@@ -323,6 +376,9 @@ struct DashboardWidgetEntryView: View {
 			.containerBackground(for: .widget) {
 				if isAccessory { Color.clear } else { GraphPaperBackground() }
 			}
+			// Whole-widget tap target (small tile + gaps between cards): open the
+			// container list. Per-card `Link`s override their own regions to open logs.
+			.widgetURL(DeepLink.containers.url)
 	}
 
 	@ViewBuilder
@@ -330,9 +386,9 @@ struct DashboardWidgetEntryView: View {
 		if let dash = entry.dashboard {
 			switch family {
 			case .systemSmall: SmallView(dash: dash)
-			case .systemMedium: MediumView(dash: dash)
-			case .systemLarge: LargeView(dash: dash, updated: dash.generatedAtDate ?? entry.date)
-			case .systemExtraLarge: ExtraLargeView(dash: dash, updated: dash.generatedAtDate ?? entry.date)
+			case .systemMedium: MediumView(dash: dash, cards: entry.cards, layout: entry.layout, density: entry.density)
+			case .systemLarge: LargeView(dash: dash, cards: entry.cards, layout: entry.layout, density: entry.density, updated: dash.generatedAtDate ?? entry.date)
+			case .systemExtraLarge: ExtraLargeView(dash: dash, cards: entry.cards, layout: entry.layout, density: entry.density, updated: dash.generatedAtDate ?? entry.date)
 			#if os(iOS)
 			case .accessoryInline: Text(dash.healthLine)
 			case .accessoryCircular: CircularView(dash: dash)

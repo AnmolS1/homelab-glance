@@ -26,6 +26,9 @@ public actor MockControlStore {
 			c("pihole", "pihole/pihole"),
 			c("mosquitto", "eclipse-mosquitto"),
 			c("zigbee2mqtt", "koenkk/zigbee2mqtt", running: false),
+			// Unknown images — exercise the generic container card path.
+			c("acme-app", "ghcr.io/acme/acme-app:1.4.2"),
+			c("backup-runner", "offen/docker-volume-backup:v2", running: false),
 			c("dockerproxy", "tecnativa/docker-socket-proxy", controllable: false),
 			c("caddy", "caddy", controllable: false),
 		]
@@ -67,6 +70,12 @@ public struct MockDockerControlClient: DockerControlProviding {
 		\(container) | Listening on :8080
 		\(container) | Ready.
 		"""
+	}
+
+	public func stats(container: String) async throws -> ContainerStats {
+		// Deterministic per-container values so demo screenshots are stable.
+		let seed = Double(abs(container.hashValue % 40))
+		return ContainerStats(cpuPct: 1.5 + seed / 10, memUsedMb: 96 + seed * 8, memLimitMb: 2048)
 	}
 
 	public func perform(_ action: ContainerAction, on container: String) async throws -> AuditEntry {

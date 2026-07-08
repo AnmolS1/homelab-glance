@@ -11,27 +11,43 @@ struct DashboardView: View {
 	/// When hosted in the MenuBarExtra popover there's no title bar, so `.toolbar`
 	/// items don't render — show the nav buttons in-content instead.
 	private let inPanel: Bool
+	/// Non-nil only for the main window: routes incoming deep links into `path`.
+	private let router: DeepLinkRouter?
 	@State private var model: DashboardViewModel
+	@State private var path = NavigationPath()
 
 	private static let groupOrder = ["Media", "Acquisition", "Infrastructure", "Home"]
 	private let columns = [GridItem(.adaptive(minimum: 165), spacing: 10)]
 
-	init(settings: AppSettings, inPanel: Bool = false) {
+	init(settings: AppSettings, inPanel: Bool = false, router: DeepLinkRouter? = nil) {
 		self.settings = settings
 		self.inPanel = inPanel
+		self.router = router
 		_model = State(initialValue: DashboardViewModel(settings: settings))
 	}
 
 	private var controlLink: some View {
-		NavigationLink { ControlView(settings: settings) } label: { Image(systemName: "server.rack") }
+		NavigationLink(value: DashRoute.containers) { Image(systemName: "server.rack") }
 	}
 	private var settingsLink: some View {
 		NavigationLink { SettingsView(settings: settings) } label: { Image(systemName: "gearshape") }
 	}
 
+	/// Translate a deep link into stack pushes. `.logs` lands on the container list
+	/// with the logs on top, so Back returns to the list.
+	private func handle(_ link: DeepLink) {
+		switch link {
+		case .containers:
+			path = NavigationPath([DashRoute.containers])
+		case .logs(let container):
+			path = NavigationPath([DashRoute.containers, DashRoute.logs(container: container)])
+		}
+		router?.pending = nil
+	}
+
 	var body: some View {
 		let bp = BlueprintColors.resolve(scheme)
-		NavigationStack {
+		NavigationStack(path: $path) {
 			ZStack {
 				GraphPaperBackground()
 				if inPanel {
@@ -52,6 +68,15 @@ struct DashboardView: View {
 				}
 			}
 			.navigationTitle("")
+			.navigationDestination(for: DashRoute.self) { route in
+				switch route {
+				case .containers:
+					ControlView(settings: settings)
+				case .logs(let container):
+					LogsView(settings: settings, container: container)
+						.environment(\.blueprint, bp)
+				}
+			}
 			.toolbar {
 				if !inPanel {
 					ToolbarItem(placement: .primaryAction) { controlLink.tint(bp.crease) }
@@ -75,6 +100,12 @@ struct DashboardView: View {
 		.onChange(of: settings.useMockData) { _, _ in model.applySettings() }
 		.onChange(of: settings.baseURLString) { _, _ in model.applySettings() }
 		.onChange(of: settings.token) { _, _ in model.applySettings() }
+		// Deep links (main window only): translate an incoming DeepLink into nav
+		// pushes. `.task` catches a link that arrived during cold launch.
+		.onChange(of: router?.pending) { _, link in
+			if let link { handle(link) }
+		}
+		.task { if let link = router?.pending { handle(link) } }
 	}
 
 	@ViewBuilder
@@ -105,7 +136,17 @@ struct DashboardView: View {
 	}
 
 	private func loaded(_ dash: Dashboard, _ bp: BlueprintColors) -> some View {
-		let grouped = Dictionary(grouping: dash.cards, by: { $0.group ?? "Other" })
+		// Rich-when-detected, else generic: containers whose service already has
+		// a rich card are skipped; the rest render as generic container tiles.
+		// The user's CardConfig applies visibility, order, groups, and renames.
+		let config = CardConfigStore.shared.load()
+		let tiles = mergeTiles(cards: dash.cards, containers: dash.containers ?? [], config: config)
+		let richCards = tiles.compactMap { if case .rich(let card) = $0 { card } else { nil } }
+		let grouped = Dictionary(grouping: richCards, by: { $0.group ?? "Other" })
+		let genericTiles: [(DockerContainer, ServiceType?)] = tiles.compactMap {
+			if case .generic(let container, let type) = $0 { (container, type) } else { nil }
+		}
+		let genericGrouped = Dictionary(grouping: genericTiles) { config.groups[$0.0.name] ?? "Containers" }
 		return VStack(alignment: .leading, spacing: 18) {
 			HostHeaderView(host: dash.host)
 
@@ -113,12 +154,26 @@ struct DashboardView: View {
 				.fill(bp.creaseLine)
 				.frame(height: 1)
 
-			ForEach(Self.groupOrder.filter { grouped[$0] != nil }, id: \.self) { group in
+			ForEach(Self.groupOrder.filter { grouped[$0] != nil || genericGrouped[$0] != nil }, id: \.self) { group in
 				VStack(alignment: .leading, spacing: 8) {
 					SectionLabel(group)
 					LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
 						ForEach(grouped[group] ?? []) { card in
 							ServiceCardView(card: card)
+						}
+						ForEach(genericGrouped[group] ?? [], id: \.0.name) { container, type in
+							GenericContainerTile(container: container, serviceType: type, config: config, settings: settings)
+						}
+					}
+				}
+			}
+
+			if let ungrouped = genericGrouped["Containers"], !ungrouped.isEmpty {
+				VStack(alignment: .leading, spacing: 8) {
+					SectionLabel("Containers")
+					LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+						ForEach(ungrouped, id: \.0.name) { container, type in
+							GenericContainerTile(container: container, serviceType: type, config: config, settings: settings)
 						}
 					}
 				}
@@ -134,6 +189,50 @@ struct DashboardView: View {
 					.font(Typography.mono(10, weight: .regular))
 					.foregroundStyle(bp.ink60.opacity(0.7))
 			}
+		}
+	}
+}
+
+/// A generic container card wired for the app: tap opens its logs, a context
+/// menu offers start/stop/restart when the container is controllable, and one
+/// CPU/mem sample loads lazily after the card appears (the ~1s two-sample
+/// fetch never blocks rendering, and the widget never does this at all).
+private struct GenericContainerTile: View {
+	let container: DockerContainer
+	let serviceType: ServiceType?
+	var config = CardConfig()
+	let settings: AppSettings
+
+	@State private var stats: ContainerStats?
+
+	/// The container with the user's display-name override applied.
+	private var displayContainer: DockerContainer {
+		var c = container
+		c.name = config.displayName(for: container.name)
+		return c
+	}
+
+	var body: some View {
+		NavigationLink(value: DashRoute.logs(container: container.name)) {
+			GenericContainerCardView(container: displayContainer, serviceType: serviceType, stats: stats)
+		}
+		.buttonStyle(.plain)
+		.contextMenu {
+			if container.controllable {
+				ForEach(ContainerAction.allCases, id: \.self) { action in
+					Button {
+						let provider = settings.makeControlProvider()
+						Task { _ = try? await provider.perform(action, on: container.name) }
+					} label: {
+						Label(action.label, systemImage: action.systemImage)
+					}
+				}
+			}
+		}
+		.task(id: container.name) {
+			guard container.isRunning, stats == nil else { return }
+			let provider = settings.makeControlProvider()
+			stats = try? await provider.stats(container: container.name)
 		}
 	}
 }

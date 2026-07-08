@@ -63,6 +63,10 @@ public struct LiveDockerControlClient: DockerControlProviding {
 		return try await send(req, as: LogsResponse.self).logs
 	}
 
+	public func stats(container: String) async throws -> ContainerStats {
+		try await send(request("api/docker/\(container)/stats"), as: ContainerStats.self)
+	}
+
 	public func perform(_ action: ContainerAction, on container: String) async throws -> AuditEntry {
 		let req = request("api/docker/\(container)/\(action.rawValue)", method: "POST", control: true)
 		return try await send(req, as: ActionResponse.self).audit
