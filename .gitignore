@@ -10,6 +10,8 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+fastlane/
+scripts/
 
 # Docker build artifacts
 aggregator/.dockerignore
@@ -17,6 +19,7 @@ aggregator/.dockerignore
 # Xcode / iOS app (project is generated from ios/project.yml via XcodeGen)
 ios/HomelabGlance.xcodeproj/
 ios/*.xcworkspace/
+ios/build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
