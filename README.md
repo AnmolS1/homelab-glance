@@ -30,8 +30,6 @@ blanks the rest of the dashboard.
 |-----------|------|---------|
 | `aggregator/` | FastAPI + httpx | Polls all services, merges into one JSON snapshot — [setup guide](aggregator/README.md) |
 | `ios/` | SwiftUI (XcodeGen) | Native iOS/macOS app, home-screen widgets, menu-bar dashboard, Docker controls |
-| `ubersicht/glance.jsx` | Übersicht widget | Legacy: full dashboard on the macOS desktop |
-| `scriptable/glance.js` | Scriptable widget | Legacy: large iOS home-screen widget |
 
 The aggregator runs as a Docker container. All source services are reached via
 environment-configured URLs — typically the server's LAN IP or Tailscale IP plus
@@ -236,61 +234,6 @@ your `.env` if they differ from the defaults.
 
 `status` is `"up"` | `"down"` | `"pending"` | `"unknown"`. `stale: true` means the
 last-good cached value is being shown because the most recent poll failed.
-
----
-
-## Übersicht widget setup
-
-1. Install [Übersicht](https://tracesof.net/uebersicht/)
-2. Copy `ubersicht/glance.jsx` into your Übersicht widgets folder
-3. Open that copy and edit the constants at the top:
-   ```js
-   const AGGREGATOR_URL = "http://YOUR_SERVER_IP:8765/api/dashboard"
-   const WIDGET_TOKEN   = "CHANGE_ME"
-   const SHOW_LOGO      = true   // set false to hide the brand logo
-   ```
-4. Save — Übersicht will auto-reload and refresh every 30 s
-
-The widget file lives in the Übersicht folder, which is not a git repo, so
-editing these constants directly is safe.
-
-**Logo:** The brand logo is embedded as a base64 data URI (`LOGO_URI`) directly
-in the script — no external image file is needed. To swap it for a different
-variant, run:
-```bash
-base64 -i path/to/logo.svg | tr -d '\n'
-```
-and paste the output into `LOGO_URI` prefixed with `data:image/svg+xml;base64,`.
-
----
-
-## Scriptable widget setup
-
-1. Install [Scriptable](https://scriptable.app/) on your iPhone
-2. Open `scriptable/setup-keychain.js`, fill in `WIDGET_TOKEN` and `AGGREGATOR_URL`,
-   then run it once inside Scriptable — this stores both values in the iOS Keychain
-3. Copy the contents of `scriptable/glance.js` into a new Scriptable script
-4. Optionally edit the logo toggle near the top of the script:
-   ```js
-   const SHOW_LOGO = true   // set false to hide the brand logo
-   ```
-5. Add a new Scriptable widget to your home screen, select "Large" size, and choose
-   the glance script
-6. Delete the setup-keychain.js script from Scriptable (the Keychain entries survive)
-
-**Logo:** The amber logo is embedded as a base64 PNG (`LOGO_PNG_B64`) so the script
-is self-contained. To regenerate with a different variant or size:
-```bash
-sips -Z 120 path/to/logo.png --out /tmp/logo-120.png && base64 -i /tmp/logo-120.png | tr -d '\n'
-```
-Paste the output into the `LOGO_PNG_B64` constant.
-
-### iOS refresh caveat
-
-`widget.refreshAfterDate` is set to 5 minutes, but **iOS throttles widget refresh
-at its own discretion** regardless of the hint — actual cadence may be 15–60 minutes
-depending on battery, background app refresh settings, and iOS heuristics. The value
-is only a hint, not a guarantee. For real-time data use the Übersicht widget on macOS.
 
 ---
 
