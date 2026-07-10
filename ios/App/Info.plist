@@ -14,6 +14,11 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Homelab Glance</string>
+	<!-- Required by the Mac App Store. INFOPLIST_KEY_LSApplicationCategoryType
+	     in build settings is ignored because GENERATE_INFOPLIST_FILE = NO, so
+	     the key must live here directly. -->
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>

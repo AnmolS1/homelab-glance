@@ -11,7 +11,7 @@ options:
 settings:
   base:
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     SWIFT_VERSION: "6.0"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: G2KBQH7KWT   # personal team "Anmol Saxena" — 10-char Team ID, survives `xcodegen generate`
@@ -54,7 +54,8 @@ targets:
         ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.utilities"
+        # LSApplicationCategoryType lives directly in App/Info.plist — INFOPLIST_KEY_*
+        # settings are ignored when GENERATE_INFOPLIST_FILE is NO (manual plist).
         # Both iOS (Frameworks next to exec) and macOS (../Frameworks) rpaths,
         # since this is one multiplatform target.
         LD_RUNPATH_SEARCH_PATHS:
