@@ -2,7 +2,7 @@ name: Publish aggregator image
 
 on:
   push:
-    branches: [main]
+    branches: [prod]
     tags: ["v*"]
     paths:
       - "aggregator/**"
