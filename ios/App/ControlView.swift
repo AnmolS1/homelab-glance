@@ -47,7 +47,7 @@ final class ControlViewModel {
 		pending = nil
 		do {
 			let entry = try await provider.perform(p.action, on: p.container.name)
-			banner = "\(p.action.label) \(p.container.name) — \(entry.result)"
+			banner = "\(p.action.label) \(p.container.name): \(entry.result)"
 			await load()
 		} catch {
 			banner = (error as? ControlError)?.errorDescription ?? error.localizedDescription
@@ -96,11 +96,12 @@ struct ControlView: View {
 		.toolbar {
 			ToolbarItem(placement: .primaryAction) {
 				NavigationLink { AuditView(settings: settings).environment(\.blueprint, bp) } label: {
-					Image(systemName: "list.bullet.rectangle")
+					Image(systemName: "list.bullet.rectangle").accessibilityLabel("Audit log").help("Audit log")
 				}
 			}
 		}
 		.refreshable { await model.load() }
+		.onChange(of: model.banner) { _, b in if let b { AccessibilityNotification.Announcement(b).post() } }
 		.task { await model.load() }
 		.confirmationDialog(
 			model.pending.map { "\($0.action.label) \($0.container.name)?" } ?? "",
@@ -113,10 +114,10 @@ struct ControlView: View {
 			}
 			Button("Cancel", role: .cancel) {}
 		}
-		.alert("Action", isPresented: Binding(get: { model.banner != nil }, set: { if !$0 { model.banner = nil } })) {
+		.alert(model.banner ?? "", isPresented: Binding(get: { model.banner != nil }, set: { if !$0 { model.banner = nil } })) {
 			Button("OK") { model.banner = nil }
 		} message: {
-			Text(model.banner ?? "")
+			Text("")
 		}
 	}
 }
@@ -157,17 +158,22 @@ private struct ContainerRow: View {
 			if container.controllable {
 				Menu {
 					ForEach(ContainerAction.allCases, id: \.self) { action in
-						Button {
+						Button(role: action == .stop ? .destructive : nil) {
 							onAction(action)
 						} label: {
 							Label(action.label, systemImage: action.systemImage)
+									.accessibilityLabel("\(action.label) \(container.name)")
 						}
 					}
 				} label: {
 					Image(systemName: "ellipsis.circle").foregroundStyle(bp.crease)
+						.accessibilityLabel("Actions for \(container.name)")
+						.help("Actions for \(container.name)")
 				}
 			} else {
 				Image(systemName: "lock.fill").font(.caption2).foregroundStyle(bp.ink60.opacity(0.6))
+					.accessibilityLabel("Not controllable")
+					.accessibilityHint("Not in the allowlist")
 			}
 		}
 	}
@@ -177,20 +183,32 @@ struct LogsView: View {
 	@Environment(\.blueprint) private var bp
 	let settings: AppSettings
 	let container: String
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
 	@State private var logs = ""
 	@State private var loading = true
 
 	private let bottomID = "logs-bottom"
 
+	private var logLines: [String] {
+		logs.isEmpty ? ["—"] : logs.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+	}
+
 	var body: some View {
 		ScrollViewReader { proxy in
 			ScrollView {
-				Text(logs.isEmpty ? "—" : logs)
-					.font(.system(.caption2, design: .monospaced))
-					.foregroundStyle(bp.ink)
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.textSelection(.enabled)
-					.padding()
+				LazyVStack(alignment: .leading, spacing: 2) {
+					ForEach(Array(logLines.enumerated()), id: \.offset) { _, line in
+						Text(line.isEmpty ? " " : line)
+							.font(.system(.caption2, design: .monospaced))
+							.foregroundStyle(bp.ink)
+							.frame(maxWidth: .infinity, alignment: .leading)
+							.textSelection(.enabled)
+					}
+				}
+				.frame(maxWidth: .infinity, alignment: .leading)
+				.padding()
+				.accessibilityElement(children: .contain)
+				.accessibilityLabel("Logs for \(container), most recent last")
 				Color.clear.frame(height: 1).id(bottomID)   // scroll anchor (newest)
 			}
 			.background(GraphPaperBackground())
@@ -203,6 +221,8 @@ struct LogsView: View {
 		.toolbar {
 			ToolbarItem(placement: .primaryAction) {
 				Button { Task { await load() } } label: { Image(systemName: "arrow.clockwise") }
+					.accessibilityLabel("Refresh")
+					.help("Refresh")
 			}
 		}
 		.task { await load() }
@@ -211,7 +231,7 @@ struct LogsView: View {
 	/// Blueprint-themed floating control to jump to the newest log line.
 	private func scrollToBottomButton(_ proxy: ScrollViewProxy) -> some View {
 		Button {
-			withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
+			if reduceMotion { proxy.scrollTo(bottomID, anchor: .bottom) } else { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) } }
 		} label: {
 			Image(systemName: "arrow.down.to.line")
 				.font(.system(size: 14, weight: .semibold))
@@ -223,7 +243,7 @@ struct LogsView: View {
 		}
 		.buttonStyle(.plain)
 		.padding(16)
-		.help("Scroll to newest")
+		.accessibilityLabel("Scroll to newest").help("Scroll to newest")
 	}
 
 	private func load() async {
@@ -256,8 +276,9 @@ struct AuditView: View {
 				Spacer()
 				Text(entry.result)
 					.font(Typography.mono(11, weight: .semibold))
-					.foregroundStyle(entry.succeeded ? bp.up : bp.crane)
+					.foregroundStyle(entry.succeeded ? bp.upText : bp.craneText)
 			}
+			.accessibilityElement(children: .combine)
 			.listRowBackground(bp.card)
 		}
 		.scrollContentBackground(.hidden)

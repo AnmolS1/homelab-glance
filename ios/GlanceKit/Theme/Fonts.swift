@@ -50,25 +50,47 @@ public enum BlueprintFonts {
 }
 
 /// Semantic type ramp for the blueprint theme.
+///
+/// Every face is registered with `.custom(_:size:relativeTo:)` so it scales with
+/// Dynamic Type (iOS) and system text-size (macOS) while keeping its exact base
+/// size at the default content-size category — the current look is preserved and
+/// only grows for larger settings. Callers keep passing raw point sizes; the
+/// matching Dynamic Type text style is inferred from the size unless overridden.
 public enum Typography {
+	/// The Dynamic Type text style whose scaling curve best fits a given point size.
+	static func textStyle(for size: CGFloat) -> Font.TextStyle {
+		switch size {
+		case ..<10.5: return .caption2
+		case ..<12.5: return .footnote
+		case ..<14.5: return .subheadline
+		case ..<17.5: return .body
+		case ..<21: return .title3
+		case ..<27: return .title
+		default: return .largeTitle
+		}
+	}
+
 	/// Display / headings — Bricolage Grotesque, else system default.
-	public static func display(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
-		if let ps = BlueprintFonts.name("display") { return .custom(ps, size: size).weight(weight) }
-		return .system(size: size, weight: weight)
+	public static func display(_ size: CGFloat, weight: Font.Weight = .bold, relativeTo: Font.TextStyle? = nil) -> Font {
+		let style = relativeTo ?? textStyle(for: size)
+		if let ps = BlueprintFonts.name("display") { return .custom(ps, size: size, relativeTo: style).weight(weight) }
+		return .system(style, design: .default).weight(weight)
 	}
 
 	/// Body / labels — Hanken Grotesk, else system default.
-	public static func text(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-		if let ps = BlueprintFonts.name("text") { return .custom(ps, size: size).weight(weight) }
-		return .system(size: size, weight: weight)
+	public static func text(_ size: CGFloat, weight: Font.Weight = .regular, relativeTo: Font.TextStyle? = nil) -> Font {
+		let style = relativeTo ?? textStyle(for: size)
+		if let ps = BlueprintFonts.name("text") { return .custom(ps, size: size, relativeTo: style).weight(weight) }
+		return .system(style, design: .default).weight(weight)
 	}
 
 	/// Numeric / monospace — IBM Plex Mono, else system monospaced.
-	public static func mono(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+	public static func mono(_ size: CGFloat, weight: Font.Weight = .semibold, relativeTo: Font.TextStyle? = nil) -> Font {
+		let style = relativeTo ?? textStyle(for: size)
 		let key = (weight == .regular || weight == .light) ? "mono" : "monoSemibold"
 		if let ps = BlueprintFonts.name(key) ?? BlueprintFonts.name("mono") {
-			return .custom(ps, size: size).weight(weight)
+			return .custom(ps, size: size, relativeTo: style).weight(weight)
 		}
-		return .system(size: size, weight: weight, design: .monospaced)
+		return .system(style, design: .monospaced).weight(weight)
 	}
 }

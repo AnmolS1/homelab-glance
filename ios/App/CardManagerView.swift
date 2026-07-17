@@ -7,6 +7,7 @@ import GlanceKit
 /// widgets, and the widget Edit screen all read one config.
 struct CardManagerView: View {
 	@Environment(\.blueprint) private var bp
+	@Environment(\.dynamicTypeSize) private var dynamicTypeSize
 	let settings: AppSettings
 
 	enum LoadState {
@@ -154,12 +155,12 @@ struct CardManagerView: View {
 					HStack(spacing: 6) {
 						Circle()
 							.fill(container.isRunning ? bp.up : bp.crane)
-							.frame(width: 7, height: 7)
+							.frame(width: 7, height: 7).accessibilityLabel(container.isRunning ? "running" : "stopped")
 						Text(config.displayName(for: container.name))
 							.font(Typography.text(15, weight: .semibold))
 							.foregroundStyle(bp.ink)
 							.lineLimit(1)
-						if let type {
+						if let type, !dynamicTypeSize.isAccessibilitySize {
 							Text(type.rawValue.uppercased())
 								.font(Typography.mono(9, weight: .semibold))
 								.foregroundStyle(bp.crease)
@@ -185,6 +186,7 @@ struct CardManagerView: View {
 			}
 			.tint(bp.crease)
 			.toggleStyle(.switch)
+			.accessibilityHint("Shows this card on the dashboard and in widgets")
 		}
 		.contextMenu {
 			Button {

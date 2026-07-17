@@ -16,10 +16,12 @@ struct DownloadLiveActivity: Widget {
 			DynamicIsland {
 				DynamicIslandExpandedRegion(.leading) {
 					Label("\(Format.num(context.state.downloadMibps)) MiB/s", systemImage: "arrow.down")
+						.accessibilityLabel("downloading \(Format.num(context.state.downloadMibps)) megabytes per second")
 						.font(.caption).foregroundStyle(BlueprintColors.dark.crease)
 				}
 				DynamicIslandExpandedRegion(.trailing) {
 					Label("\(context.state.activeCount)", systemImage: "arrow.down.circle")
+						.accessibilityLabel("\(context.state.activeCount) active")
 						.font(.caption)
 				}
 				DynamicIslandExpandedRegion(.center) {
@@ -30,11 +32,11 @@ struct DownloadLiveActivity: Widget {
 						.font(.caption2).foregroundStyle(.secondary)
 				}
 			} compactLeading: {
-				Image(systemName: "arrow.down")
+				Image(systemName: "arrow.down").accessibilityLabel("Downloading")
 			} compactTrailing: {
-				Text("\(Format.num(context.state.downloadMibps, decimals: 0))")
+				Text("\(Format.num(context.state.downloadMibps, decimals: 0))").accessibilityLabel("\(Format.num(context.state.downloadMibps, decimals: 0)) megabytes per second down")
 			} minimal: {
-				Image(systemName: "arrow.down.circle")
+				Image(systemName: "arrow.down.circle").accessibilityLabel("Download activity")
 			}
 			.keylineTint(BlueprintColors.dark.crane)
 		}
@@ -56,6 +58,8 @@ struct DownloadLiveActivity: Widget {
 					.font(.caption).foregroundStyle(BlueprintColors.dark.ink60)
 			}
 		}
+		.accessibilityElement(children: .ignore)
+		.accessibilityLabel("\(context.attributes.host). downloading \(Format.num(context.state.downloadMibps)) megabytes per second, uploading \(Format.num(context.state.uploadMibps)). \(context.state.activeCount) active, seeding \(context.state.seedingCount)")
 	}
 }
 #endif

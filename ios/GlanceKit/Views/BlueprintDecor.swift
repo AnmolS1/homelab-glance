@@ -53,9 +53,13 @@ public struct FoldedCorner: View {
 /// `animated` controls the slow rotation — turn it off in widgets (no animation).
 public struct RosetteMark: View {
 	@Environment(\.blueprint) private var bp
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
 	@State private var spin = false
 	var size: CGFloat
 	var animated: Bool
+
+	/// Honor Reduce Motion: no rotation when the user has it enabled.
+	private var shouldAnimate: Bool { animated && !reduceMotion }
 
 	public init(size: CGFloat = 22, animated: Bool = true) {
 		self.size = size
@@ -83,8 +87,8 @@ public struct RosetteMark: View {
 			ctx.fill(dot, with: .color(bp.sax))
 		}
 		.frame(width: size, height: size)
-		.rotationEffect(.degrees(animated && spin ? 360 : 0))
-		.animation(animated ? .linear(duration: 36).repeatForever(autoreverses: false) : nil, value: spin)
-		.onAppear { if animated { spin = true } }
+		.rotationEffect(.degrees(shouldAnimate && spin ? 360 : 0))
+		.animation(shouldAnimate ? .linear(duration: 36).repeatForever(autoreverses: false) : nil, value: spin)
+		.onAppear { if shouldAnimate { spin = true } }
 	}
 }

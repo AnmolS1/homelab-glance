@@ -27,6 +27,9 @@ public struct BlueprintColors: Sendable, Equatable {
 	public var crane: Color        // primary accent / down
 	public var sax: Color          // gold accent / stale
 	public var up: Color           // derived healthy green
+	public var upText: Color       // accessible status-badge/label text (green)
+	public var craneText: Color    // accessible status-badge/label text (red)
+	public var saxText: Color      // accessible status-badge/label text (gold)
 
 	public static let dark = BlueprintColors(
 		graph: Color(hex: "#13202A"),
@@ -37,7 +40,10 @@ public struct BlueprintColors: Sendable, Equatable {
 		creaseLine: Color(hex: "#82A9CE", alpha: 0.22),
 		crane: Color(hex: "#F5613C"),
 		sax: Color(hex: "#D9A521"),
-		up: Color(hex: "#6FB58A")
+		up: Color(hex: "#6FB58A"),
+		upText: Color(hex: "#6FB58A"),
+		craneText: Color(hex: "#FF7A57"),
+		saxText: Color(hex: "#D9A521")
 	)
 
 	public static let light = BlueprintColors(
@@ -51,7 +57,10 @@ public struct BlueprintColors: Sendable, Equatable {
 		creaseLine: Color(hex: "#2E5E8C", alpha: 0.20),
 		crane: Color(hex: "#E84A27"),
 		sax: Color(hex: "#B8860B"),
-		up: Color(hex: "#3E8E5E")
+		up: Color(hex: "#3E8E5E"),
+		upText: Color(hex: "#1F6B3F"),
+		craneText: Color(hex: "#A83214"),
+		saxText: Color(hex: "#7A5A00")
 	)
 
 	public static func resolve(_ scheme: ColorScheme) -> BlueprintColors {
@@ -64,6 +73,18 @@ public struct BlueprintColors: Sendable, Equatable {
 		switch status {
 		case .up: return up
 		case .down: return crane
+		default: return ink60
+		}
+	}
+
+	/// Accessible foreground for status badges/labels (darker in light, brighter
+	/// in dark) so the small badge text clears WCAG AA on its tinted pill. Non-text
+	/// status color (dots/borders/sparklines) still uses `statusColor`.
+	public func statusTextColor(_ status: ServiceStatus?, stale: Bool?) -> Color {
+		if stale == true { return saxText }
+		switch status {
+		case .up: return upText
+		case .down: return craneText
 		default: return ink60
 		}
 	}

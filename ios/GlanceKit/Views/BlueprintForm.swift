@@ -94,9 +94,13 @@ public struct BlueprintField: View {
 				.font(Typography.text(13, weight: .semibold))
 				.foregroundStyle(bp.ink)
 				.fixedSize(horizontal: false, vertical: true)
+				// The field itself carries the label for VoiceOver (below); this
+				// visible caption would otherwise read as a duplicate stop.
+				.accessibilityHidden(true)
 			HStack(spacing: 8) {
 				input
 					.textFieldStyle(.plain)
+					.accessibilityLabel(label)
 					.font(inputFont)
 					.foregroundStyle(bp.ink)
 					.truncationMode(.middle)
@@ -117,6 +121,7 @@ public struct BlueprintField: View {
 					}
 					.buttonStyle(.plain)
 					.accessibilityLabel(revealed ? "Hide value" : "Show value")
+					.help(revealed ? "Hide value" : "Show value")
 				}
 			}
 			.padding(.horizontal, 12)
@@ -217,9 +222,9 @@ public struct BlueprintActionRow: View {
 					if isError {
 						Image(systemName: "exclamationmark.triangle.fill")
 							.font(.system(size: 11, weight: .semibold))
-							.foregroundStyle(bp.crane)
+							.foregroundStyle(bp.crane).accessibilityHidden(true)
 					}
-					Text(result)
+					Text(result).accessibilityLabel(isError ? "Error: \(result)" : result)
 						.font(Typography.text(13))
 						.foregroundStyle(isError ? bp.ink : bp.ink60)
 						.fixedSize(horizontal: false, vertical: true)
@@ -265,7 +270,7 @@ public struct BlueprintNavRow: View {
 				}
 			}
 			Spacer(minLength: 0)
-			Image(systemName: "chevron.right")
+			Image(systemName: "chevron.right").accessibilityHidden(true)
 				.font(.system(size: 12, weight: .semibold))
 				.foregroundStyle(bp.ink60)
 		}

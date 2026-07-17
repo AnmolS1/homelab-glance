@@ -100,6 +100,7 @@ struct OnboardingView: View {
 		}
 		.background(GraphPaperBackground().ignoresSafeArea())
 		.interactiveDismissDisabled()
+			.onChange(of: testResult) { _, r in if let r { AccessibilityNotification.Announcement(r).post() } }
 	}
 
 	private var header: some View {

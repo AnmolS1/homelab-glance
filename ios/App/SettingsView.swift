@@ -73,6 +73,7 @@ struct SettingsView: View {
 		.scrollContentBackground(.hidden)
 		.background(GraphPaperBackground())
 		.navigationTitle("Settings")
+			.onChange(of: testResult) { _, r in if let r { AccessibilityNotification.Announcement(r).post() } }
 		.toolbar {
 			ToolbarItem(placement: .confirmationAction) {
 				Button("Done") { dismiss() }

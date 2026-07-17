@@ -14,12 +14,12 @@ public struct SensorsView: View {
 				SectionLabel("Sensors")
 
 				if let t = sensors.nvmeTemp {
-					sensorRow(label: "NVMe", value: Format.num(t, unit: "°", decimals: 0),
-					          history: sensors.nvmeTempHistory, color: bp.sax)
+					sensorRow(label: "NVMe", spokenLabel: "NVMe temperature",
+					          current: t, history: sensors.nvmeTempHistory, color: bp.sax)
 				}
 				if let t = sensors.gpuTemp {
-					sensorRow(label: "GPU", value: Format.num(t, unit: "°", decimals: 0),
-					          history: sensors.gpuTempHistory, color: bp.up)
+					sensorRow(label: "GPU", spokenLabel: "GPU temperature",
+					          current: t, history: sensors.gpuTempHistory, color: bp.up)
 				}
 
 				gpuDetail
@@ -27,21 +27,40 @@ public struct SensorsView: View {
 		}
 	}
 
-	private func sensorRow(label: String, value: String, history: [Double]?, color: Color) -> some View {
-		HStack(spacing: 10) {
+	private func sensorRow(label: String, spokenLabel: String, current: Double,
+	                       history: [Double]?, color: Color) -> some View {
+		let data = history ?? []
+		// The sparkline carries the spoken summary + audio graph when it has a
+		// series; otherwise the label/value text stay audible to VoiceOver.
+		let accessible = data.count >= 2
+		return HStack(spacing: 10) {
 			Text(label.uppercased())
 				.font(Typography.text(10, weight: .medium))
 				.tracking(0.4)
 				.foregroundStyle(bp.ink60)
 				.frame(width: 46, alignment: .leading)
-			Text(value)
+				.accessibilityHidden(accessible)
+			Text(Format.num(current, unit: "°", decimals: 0))
 				.font(Typography.mono(13, weight: .semibold))
 				.foregroundStyle(bp.ink)
 				.frame(width: 40, alignment: .leading)
-			SparklineView(data: history ?? [], color: color)
+				.accessibilityLabel("\(spokenLabel), \(Format.spokenTemp(current))")
+				.accessibilityHidden(accessible)
+			SparklineView(data: data, color: color,
+			              accessibilityLabel: accessible ? spokenLabel : nil,
+			              accessibilityValue: accessible ? seriesSummary(current: current, data: data) : nil,
+			              unitLabel: "degrees")
 				.frame(height: 24)
 				.frame(maxWidth: .infinity)
 		}
+	}
+
+	/// "39 degrees, range 38 to 49 over the last 30 readings, trending steady"
+	private func seriesSummary(current: Double, data: [Double]) -> String {
+		let lo = Int((data.min() ?? current).rounded())
+		let hi = Int((data.max() ?? current).rounded())
+		return "\(Format.spokenTemp(current)), range \(lo) to \(hi) "
+			+ "over the last \(data.count) readings, trending \(Format.spokenTrend(data))"
 	}
 
 	@ViewBuilder private var gpuDetail: some View {
@@ -69,6 +88,20 @@ public struct SensorsView: View {
 				}
 			}
 			.padding(.leading, 56)
+			// One VoiceOver stop for the GPU detail line, spoken via Format.
+			.accessibilityElement(children: .ignore)
+			.accessibilityLabel(gpuDetailSpoken)
 		}
+	}
+
+	/// "load 66 percent, power 120 watts, VRAM 3.5 of 8 gigabytes"
+	private var gpuDetailSpoken: String {
+		var out: [String] = []
+		if let l = sensors.gpuLoadPct { out.append("load \(Format.spokenPercent(l, decimals: 0))") }
+		if let p = sensors.gpuPowerW { out.append("power \(Int(p.rounded())) watts") }
+		if let used = sensors.gpuVramUsedMb, let total = sensors.gpuVramTotalMb {
+			out.append("VRAM \(Format.spokenPair(used: used / 1024, total: total / 1024, unit: "gigabytes"))")
+		}
+		return out.joined(separator: ", ")
 	}
 }

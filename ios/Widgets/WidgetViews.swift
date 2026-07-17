@@ -28,7 +28,15 @@ private struct ServiceChip: View {
 						.lineLimit(1)
 				}
 			}
+			.accessibilityElement(children: .ignore)
+			.accessibilityLabel(chipLabel)
 		}
+	}
+
+	private var chipLabel: String {
+		var out = "\(card.title), \(Format.spokenStatus(card.status, stale: card.stale))"
+		if let m = card.spokenWidgetMetric { out += ", \(m)" }
+		return out
 	}
 }
 
@@ -78,6 +86,19 @@ private struct HostLine: View {
 				.minimumScaleFactor(0.7)
 			}
 		}
+		.accessibilityElement(children: .ignore)
+		.accessibilityLabel(hostLabel)
+	}
+
+	private var hostLabel: String {
+		var parts = [dash.host.name ?? "homelab", Format.spokenStatus(dash.host.status, stale: dash.host.stale)]
+		if showStats {
+			parts.append("CPU \(Format.spokenPercent(dash.host.cpuPct, decimals: 1)), "
+				+ "RAM \(Format.spokenPair(used: dash.host.ramUsedGb, total: dash.host.ramTotalGb, unit: "gigabytes")), "
+				+ "disk \(Format.spokenPair(used: dash.host.diskUsedTb, total: dash.host.diskTotalTb, unit: "terabytes", usedDecimals: 1, totalDecimals: 1)), "
+				+ "uptime \(Format.spokenUptime(dash.host.uptime))")
+		}
+		return parts.joined(separator: ". ")
 	}
 }
 
@@ -109,6 +130,15 @@ private struct SmallView: View {
 				         alignment: .trailing)
 			}
 		}
+		.accessibilityElement(children: .ignore)
+		.accessibilityLabel(summaryLabel)
+	}
+
+	private var summaryLabel: String {
+		let health = dash.downCount == 0 ? "all services up" : "\(dash.downCount) down"
+		var out = "\(dash.host.name ?? "homelab"), \(health). CPU \(Format.spokenPercent(dash.host.cpuPct, decimals: 1))"
+		if let d = dash.diskPercent { out += ", disk \(Format.spokenPercent(d, decimals: 0))" }
+		return out
 	}
 }
 
@@ -166,10 +196,19 @@ private struct CompactSensors: View {
 	let s: Sensors
 
 	private func row(_ label: String, _ temp: Double, _ history: [Double]?, _ color: Color) -> some View {
-		HStack(spacing: 6) {
+		let data = history ?? []
+		let accessible = data.count >= 2
+		return HStack(spacing: 6) {
 			Text(label).frame(width: 34, alignment: .leading).foregroundStyle(bp.ink60)
+				.accessibilityHidden(accessible)
 			Text(Format.num(temp, unit: "°", decimals: 0)).frame(width: 26, alignment: .leading).foregroundStyle(bp.ink)
-			SparklineView(data: history ?? [], color: color).frame(height: 12).frame(maxWidth: .infinity)
+				.accessibilityLabel("\(label) temperature, \(Format.spokenTemp(temp))")
+				.accessibilityHidden(accessible)
+			SparklineView(data: data, color: color,
+			              accessibilityLabel: accessible ? "\(label) temperature" : nil,
+			              accessibilityValue: accessible ? "\(Format.spokenTemp(temp)), range \(Int((data.min() ?? temp).rounded())) to \(Int((data.max() ?? temp).rounded())) over the last \(data.count) readings, trending \(Format.spokenTrend(data))" : nil,
+			              unitLabel: "degrees")
+				.frame(height: 12).frame(maxWidth: .infinity)
 		}
 	}
 
@@ -185,8 +224,20 @@ private struct CompactSensors: View {
 				}
 			}
 			.foregroundStyle(bp.ink60)
+			.accessibilityElement(children: .ignore)
+			.accessibilityLabel(gpuSpoken)
 		}
 		.font(Typography.mono(8, weight: .semibold))
+	}
+
+	private var gpuSpoken: String {
+		var out: [String] = []
+		if let l = s.gpuLoadPct { out.append("load \(Format.spokenPercent(l, decimals: 0))") }
+		if let p = s.gpuPowerW { out.append("power \(Int(p.rounded())) watts") }
+		if let u = s.gpuVramUsedMb, let tot = s.gpuVramTotalMb {
+			out.append("VRAM \(Format.spokenPair(used: u / 1024, total: tot / 1024, unit: "gigabytes"))")
+		}
+		return out.joined(separator: ", ")
 	}
 }
 
@@ -246,6 +297,8 @@ private struct MiniCard: View {
 			.background(bp.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 			.overlay { RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(borderColor, lineWidth: 1) }
 			.opacity(card.status == .down ? 0.6 : 1)
+			.accessibilityElement(children: .ignore)
+			.accessibilityLabel(card.spokenSummary)
 		}
 	}
 }
@@ -335,6 +388,8 @@ private struct CircularView: View {
 			Text(Format.num(dash.diskPercent, unit: "", decimals: 0))
 		}
 		.gaugeStyle(.accessoryCircularCapacity)
+			.accessibilityLabel("Disk usage")
+			.accessibilityValue(Format.spokenPercent(dash.diskPercent, decimals: 0))
 	}
 }
 
@@ -347,6 +402,7 @@ private struct RectangularView: View {
 			Text("CPU \(Format.num(dash.host.cpuPct, unit: "%"))  RAM \(Format.num(dash.host.ramUsedGb, unit: "G"))")
 				.font(.caption2)
 		}
+		.accessibilityElement(children: .combine)
 	}
 }
 #endif
@@ -398,7 +454,7 @@ struct DashboardWidgetEntryView: View {
 			}
 		} else {
 			VStack(spacing: 4) {
-				Image(systemName: "wifi.exclamationmark").foregroundStyle(bp.crane)
+				Image(systemName: "wifi.exclamationmark").foregroundStyle(bp.crane).accessibilityHidden(true)
 				Text(entry.unreachable ? "Unreachable" : "Open app to set up")
 					.font(Typography.text(11)).foregroundStyle(bp.ink60)
 					.multilineTextAlignment(.center)

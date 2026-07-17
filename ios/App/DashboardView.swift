@@ -6,6 +6,7 @@ import GlanceKit
 struct DashboardView: View {
 	@Environment(\.colorScheme) private var scheme
 	@Environment(\.scenePhase) private var scenePhase
+	@Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
 	private let settings: AppSettings
 	/// When hosted in the MenuBarExtra popover there's no title bar, so `.toolbar`
@@ -17,7 +18,11 @@ struct DashboardView: View {
 	@State private var path = NavigationPath()
 
 	private static let groupOrder = ["Media", "Acquisition", "Infrastructure", "Home"]
-	private let columns = [GridItem(.adaptive(minimum: 165), spacing: 10)]
+	// Wider minimum at accessibility text sizes → fewer columns (single on phones)
+	// so grown cards reflow instead of clipping.
+	private var columns: [GridItem] {
+		[GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 300 : 165), spacing: 10)]
+	}
 
 	init(settings: AppSettings, inPanel: Bool = false, router: DeepLinkRouter? = nil) {
 		self.settings = settings
@@ -28,9 +33,19 @@ struct DashboardView: View {
 
 	private var controlLink: some View {
 		NavigationLink(value: DashRoute.containers) { Image(systemName: "server.rack") }
+			.accessibilityLabel("Containers")
+			.help("Containers")
 	}
 	private var settingsLink: some View {
 		NavigationLink { SettingsView(settings: settings) } label: { Image(systemName: "gearshape") }
+			.accessibilityLabel("Settings")
+			.help("Settings")
+	}
+
+	/// The current error message when the dashboard has no data, else nil — gates
+	/// the failure announcement so it fires once on entering the error state.
+	private var failureMessage: String? {
+		if case .failed(let message) = model.state { return message } else { return nil }
 	}
 
 	/// Translate a deep link into stack pushes. `.logs` lands on the container list
@@ -105,6 +120,11 @@ struct DashboardView: View {
 		.onChange(of: router?.pending) { _, link in
 			if let link { handle(link) }
 		}
+		// Announce an unreachable/error state once, politely (fires on entering
+		// .failed; only re-fires if the message text itself changes).
+		.onChange(of: failureMessage) { _, message in
+			if let message { AccessibilityNotification.Announcement(message).post() }
+		}
 		.task { if let link = router?.pending { handle(link) } }
 	}
 
@@ -118,6 +138,7 @@ struct DashboardView: View {
 				Image(systemName: "exclamationmark.triangle")
 					.font(.title)
 					.foregroundStyle(bp.crane)
+					.accessibilityHidden(true)
 				Text(message)
 					.font(Typography.text(13))
 					.foregroundStyle(bp.ink60)
@@ -131,6 +152,12 @@ struct DashboardView: View {
 			ScrollView {
 				loaded(dash, bp)
 					.padding(16)
+			}
+			// Manual refresh with spoken announcements (background polls stay silent).
+			.refreshable {
+				AccessibilityNotification.Announcement("Refreshing").post()
+				await model.refresh()
+				AccessibilityNotification.Announcement("Dashboard updated").post()
 			}
 		}
 	}
@@ -188,6 +215,8 @@ struct DashboardView: View {
 				Text("updated \(Format.clock(model.lastUpdated))")
 					.font(Typography.mono(10, weight: .regular))
 					.foregroundStyle(bp.ink60.opacity(0.7))
+					// Speak a relative time ("updated 2 minutes ago") rather than the clock.
+					.accessibilityLabel(Format.spokenRelative(model.lastUpdated))
 			}
 		}
 	}
@@ -217,6 +246,7 @@ private struct GenericContainerTile: View {
 			GenericContainerCardView(container: displayContainer, serviceType: serviceType, stats: stats)
 		}
 		.buttonStyle(.plain)
+		.accessibilityHint("Opens logs")
 		.contextMenu {
 			if container.controllable {
 				ForEach(ContainerAction.allCases, id: \.self) { action in

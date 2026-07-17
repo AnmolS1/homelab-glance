@@ -5,6 +5,7 @@ import SwiftUI
 /// fetched lazily — never in the widget timeline) one CPU/mem sample.
 public struct GenericContainerCardView: View {
 	@Environment(\.blueprint) private var bp
+	@Environment(\.colorSchemeContrast) private var contrast
 	let container: DockerContainer
 	let serviceType: ServiceType?
 	let stats: ContainerStats?
@@ -44,7 +45,27 @@ public struct GenericContainerCardView: View {
 			RoundedRectangle(cornerRadius: 12, style: .continuous)
 				.strokeBorder(borderColor, lineWidth: 1)
 		}
-		.opacity(isDown ? 0.6 : 1)
+		.opacity(isDown && contrast != .increased ? 0.6 : 1)
+		.accessibilityElement(children: .ignore)
+		.accessibilityLabel(accessibilityDescription)
+	}
+
+	/// "qbittorrent, running. CPU 2 percent, memory 0.31 gigabytes. uptime Up 3 hours. Not controllable."
+	private var accessibilityDescription: String {
+		var parts: [String] = [container.name, container.isRunning ? "running" : "stopped"]
+
+		if let stats {
+			var s: [String] = []
+			if let cpu = stats.cpuPct { s.append("CPU \(Format.spokenPercent(cpu, decimals: 1))") }
+			if let mem = stats.memUsedMb { s.append("memory \(Format.spokenMemGB(mem))") }
+			if !s.isEmpty { parts.append(s.joined(separator: ", ")) }
+		}
+		if let status = container.status, !status.isEmpty {
+			parts.append(container.isRunning ? "uptime \(status)" : "state \(status)")
+		}
+		if !container.controllable { parts.append("not controllable") }
+
+		return parts.joined(separator: ". ")
 	}
 
 	private var header: some View {

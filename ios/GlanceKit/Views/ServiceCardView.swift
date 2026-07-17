@@ -5,6 +5,7 @@ import SwiftUI
 /// service-specific body keyed on `card.id` — mirroring glance.jsx's renderCard.
 public struct ServiceCardView: View {
 	@Environment(\.blueprint) private var bp
+	@Environment(\.colorSchemeContrast) private var contrast
 	let card: Card
 	var compact: Bool
 
@@ -36,8 +37,12 @@ public struct ServiceCardView: View {
 			RoundedRectangle(cornerRadius: 12, style: .continuous)
 				.strokeBorder(borderColor, lineWidth: 1)
 		}
-		.opacity(isDown ? 0.6 : 1)
+		.opacity(isDown && contrast != .increased ? 0.6 : 1)
+		// One VoiceOver stop per card: name → status → metrics, spoken via Format.
+		.accessibilityElement(children: .ignore)
+		.accessibilityLabel(card.spokenSummary)
 	}
+
 
 	private var header: some View {
 		HStack(spacing: 6) {

@@ -19,6 +19,20 @@ brew install xcodegen
 
 # This script's working directory is ci_scripts/; the project lives one level up (ios/).
 cd "$(dirname "$0")/.."
+
+# Auto build number: derive CURRENT_PROJECT_VERSION from the git commit count so
+# every Xcode Cloud build gets a fresh, monotonically-increasing build number with
+# no manual bump. Xcode Cloud may shallow-clone, so unshallow first; floor the value
+# so a broken/shallow count can never regress below an already-uploaded build.
+# The App/Widget Info.plists use $(CURRENT_PROJECT_VERSION), so this is picked up by
+# xcodegen below. (MARKETING_VERSION stays the human-set release version.)
+git fetch --unshallow 2>/dev/null || true
+BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+FLOOR=26
+[ "$BUILD" -lt "$FLOOR" ] && BUILD=$FLOOR
+echo "▸ Setting build number (CURRENT_PROJECT_VERSION) to $BUILD"
+/usr/bin/sed -i '' -E "s/(CURRENT_PROJECT_VERSION:[[:space:]]*)\"[0-9]+\"/\1\"$BUILD\"/" project.yml
+
 echo "▸ Generating HomelabGlance.xcodeproj from project.yml in $(pwd)…"
 xcodegen generate
 

@@ -21,14 +21,16 @@ public struct StatusBadge: View {
 	}
 
 	public var body: some View {
-		let color = bp.statusColor(status, stale: stale)
+		let pill = bp.statusColor(status, stale: stale)
 		Text(label)
 			.font(Typography.mono(9, weight: .semibold))
 			.tracking(0.5)
-			.foregroundStyle(color)
+			.foregroundStyle(bp.statusTextColor(status, stale: stale))
 			.padding(.horizontal, 6)
 			.padding(.vertical, 2)
-			.background(color.opacity(0.16), in: Capsule())
+			.background(pill.opacity(0.16), in: Capsule())
+			// "—"/"UP"/"DOWN"/"STALE" glyphs read poorly; speak the meaning.
+			.accessibilityLabel(Format.spokenStatus(status, stale: stale))
 	}
 }
 
@@ -58,7 +60,7 @@ public struct StatPair: View {
 				.font(Typography.mono(13, weight: .semibold))
 				.foregroundStyle(valueColor ?? bp.ink)
 				.lineLimit(1)
-				.minimumScaleFactor(0.6)
+				.minimumScaleFactor(0.8)
 		}
 	}
 }
@@ -75,6 +77,9 @@ public struct SectionLabel: View {
 			.font(Typography.text(11, weight: .semibold))
 			.tracking(0.8)
 			.foregroundStyle(bp.crease)
+			// Let the VoiceOver rotor jump between dashboard sections.
+			.accessibilityLabel(text)
+			.accessibilityAddTraits(.isHeader)
 	}
 }
 
@@ -102,7 +107,7 @@ public struct KVRow: View {
 				.font(Typography.mono(12, weight: .semibold))
 				.foregroundStyle(valueColor ?? bp.ink)
 				.lineLimit(1)
-				.minimumScaleFactor(0.6)
+				.minimumScaleFactor(0.8)
 		}
 	}
 }
