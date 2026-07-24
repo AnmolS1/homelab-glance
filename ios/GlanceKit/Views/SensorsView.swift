@@ -43,6 +43,11 @@ public struct SensorsView: View {
 					readout(vertical: true).frame(maxWidth: .infinity, alignment: .leading)
 				}
 			}
+			// Hug content height: the flexible-height divider would otherwise become
+			// the greediest child and balloon the panel to fill the (vertically
+			// centred) iPad viewport. fixedSize pins the row to the cells' height, and
+			// the divider then fills that.
+			.fixedSize(horizontal: false, vertical: true)
 		} else {
 			VStack(alignment: .leading, spacing: 14) {
 				HStack(alignment: .top, spacing: 16) { tempCells }
