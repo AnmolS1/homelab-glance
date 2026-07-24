@@ -20,6 +20,9 @@ public extension Color {
 public struct BlueprintColors: Sendable, Equatable {
 	public var graph: Color        // page ground
 	public var card: Color         // card fill
+	public var cardQuiet: Color    // healthy-card fill: card@0.55 over graph, PRE-COMPOSITED
+	                               // to a solid colour (a real .opacity(0.55) fill blanks out
+	                               // on macOS when the window is occluded)
 	public var ink: Color          // primary text
 	public var ink60: Color        // secondary text
 	public var crease: Color       // hairlines / blue accent
@@ -34,6 +37,7 @@ public struct BlueprintColors: Sendable, Equatable {
 	public static let dark = BlueprintColors(
 		graph: Color(hex: "#13202A"),
 		card: Color(hex: "#182530"),
+		cardQuiet: Color(hex: "#16232D"),   // #182530 @ 0.55 over #13202A
 		ink: Color(hex: "#E9ECE7"),
 		ink60: Color(hex: "#E9ECE7", alpha: 0.66),
 		crease: Color(hex: "#82A9CE"),
@@ -49,6 +53,7 @@ public struct BlueprintColors: Sendable, Equatable {
 	public static let light = BlueprintColors(
 		graph: Color(hex: "#EEF0EC"),
 		card: Color(hex: "#FFFFFF"),
+		cardQuiet: Color(hex: "#F7F8F6"),   // #FFFFFF @ 0.55 over #EEF0EC
 		ink: Color(hex: "#1B2A33"),
 		// 0.66 (not the spec's 0.62) so 12–13pt secondary text clears WCAG AA
 		// (4.5:1) on both card and graph grounds; matches the dark theme's alpha.

@@ -48,10 +48,10 @@ private struct StatusCardChrome: ViewModifier {
 	let bp: BlueprintColors
 	let increasedContrast: Bool
 
-	// Healthy cards recede via a translucent panel — but never when the user has
-	// Increase Contrast on (full-opacity card keeps text ratios at their measured
-	// values).
-	private var fillOpacity: Double { weight == .up && !increasedContrast ? 0.55 : 1 }
+	// Healthy cards recede on a quieter panel (a pre-composited SOLID colour, not a
+	// real .opacity(0.55) — that blanks out on macOS when the window is occluded).
+	// Under Increase Contrast, use the full card for maximum separation.
+	private var fill: Color { weight == .up && !increasedContrast ? bp.cardQuiet : bp.card }
 
 	private var borderColor: Color {
 		switch weight {
@@ -72,7 +72,7 @@ private struct StatusCardChrome: ViewModifier {
 			.frame(maxWidth: .infinity, alignment: .topLeading)
 			.background {
 				ZStack(alignment: .leading) {
-					shape.fill(bp.card.opacity(fillOpacity))
+					shape.fill(fill)
 					if weight == .stale {
 						bp.sax.frame(width: metrics.spine)
 					}
