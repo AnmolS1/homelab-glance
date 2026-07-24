@@ -74,12 +74,43 @@ public struct SectionLabel: View {
 
 	public var body: some View {
 		Text(text.uppercased())
-			.font(Typography.text(11, weight: .semibold))
-			.tracking(0.8)
+			// Mono + wide tracking (spec §3: IBM Plex Mono 11/500, 0.15em) reads as a
+			// blueprint annotation rather than a generic heading.
+			.font(Typography.mono(11, weight: .medium, relativeTo: .caption2))
+			.tracking(1.6)
 			.foregroundStyle(bp.crease)
 			// Let the VoiceOver rotor jump between dashboard sections.
 			.accessibilityLabel(text)
 			.accessibilityAddTraits(.isHeader)
+	}
+}
+
+/// A host-header alert chip summarising the fleet: `N DOWN` (loud) or `N STALE`
+/// (mid). Omitted when the count is zero. Text is the accessible status-label
+/// colour so it clears WCAG on the tinted pill.
+public struct AlertChip: View {
+	@Environment(\.blueprint) private var bp
+	let count: Int
+	/// true → down (crane), false → stale (sax).
+	let down: Bool
+
+	public init(count: Int, down: Bool) {
+		self.count = count
+		self.down = down
+	}
+
+	public var body: some View {
+		let color = down ? bp.crane : bp.sax
+		let textColor = down ? bp.statusTextColor(.down, stale: false)
+		                     : bp.statusTextColor(.up, stale: true)
+		Text("\(count) \(down ? "DOWN" : "STALE")")
+			.font(Typography.mono(10, weight: .semibold))
+			.tracking(0.5)
+			.foregroundStyle(textColor)
+			.padding(.horizontal, 7)
+			.padding(.vertical, 3)
+			.background(color.opacity(0.16), in: Capsule())
+			.accessibilityLabel("\(count) \(down ? "down" : "stale")")
 	}
 }
 

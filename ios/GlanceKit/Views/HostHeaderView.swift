@@ -7,10 +7,16 @@ public struct HostHeaderView: View {
 	@Environment(\.dynamicTypeSize) private var dynamicTypeSize
 	let host: HostSummary
 	var rosetteAnimated: Bool
+	/// Fleet alert counts, surfaced as chips right after the server name.
+	var downCount: Int
+	var staleCount: Int
 
-	public init(host: HostSummary, rosetteAnimated: Bool = true) {
+	public init(host: HostSummary, rosetteAnimated: Bool = true,
+	            downCount: Int = 0, staleCount: Int = 0) {
 		self.host = host
 		self.rosetteAnimated = rosetteAnimated
+		self.downCount = downCount
+		self.staleCount = staleCount
 	}
 
 	public var body: some View {
@@ -18,12 +24,21 @@ public struct HostHeaderView: View {
 			HStack(spacing: 10) {
 				LogoMark(size: 26)
 				Text(host.name ?? "homelab")
-					.font(Typography.display(20, weight: .bold))
+					.font(Typography.display(18, weight: .semibold))
 					.foregroundStyle(bp.ink)
 					.lineLimit(1)
 					.minimumScaleFactor(0.8)
 				StatusBadge(status: host.status, stale: host.stale)
 				Spacer(minLength: 0)
+			}
+
+			// Fleet alerts — the second thing read after the name. Omitted when clear.
+			if downCount > 0 || staleCount > 0 {
+				HStack(spacing: 8) {
+					if downCount > 0 { AlertChip(count: downCount, down: true) }
+					if staleCount > 0 { AlertChip(count: staleCount, down: false) }
+					Spacer(minLength: 0)
+				}
 			}
 
 			// Four-up horizontally, but at accessibility text sizes the row would

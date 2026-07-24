@@ -13,6 +13,23 @@ public extension Card {
 		}
 	}
 
+	/// One glanceable metric line for the quiet (healthy) card treatment — the
+	/// single thing worth reading when a service is fine. Fuller than `widgetMetric`
+	/// but still one line; nil falls back to the CPU line.
+	var condensedMetric: String? {
+		let d = data ?? CardData()
+		switch id {
+		case "jellyfin":
+			guard let s = d.streams else { return nil }
+			return s == 0 ? "Idle" : "\(s) streaming"
+		case "qbittorrent": return "↓\(Format.num(d.dlMibps)) ↑\(Format.num(d.ulMibps)) MiB/s"
+		case "sonarr", "radarr": return d.queue.map { "Queue \($0)" }
+		case "prowlarr": return d.grabs.map { "\($0) grabs" }
+		case "pihole": return d.blockedPct.map { "\(Format.num($0, unit: "%", decimals: 0)) blocked" }
+		default: return nil
+		}
+	}
+
 	/// Spoken twin of `widgetMetric` — "queue 4" not "Q4"; nil when there's no metric.
 	var spokenWidgetMetric: String? {
 		let d = data ?? CardData()

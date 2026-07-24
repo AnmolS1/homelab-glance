@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The universal container card for auto-detected containers no rich poller
-/// covers: name, running dot, uptime from the raw status string, and (in-app,
-/// fetched lazily — never in the widget timeline) one CPU/mem sample.
+/// covers. Status-weighted (v1.2) like `ServiceCardView`: a running container
+/// recedes to a dot + name + uptime on a translucent panel; a stopped one turns
+/// loud with a `● DOWN` banner and a status border. Shares `StatusCardChrome`.
 public struct GenericContainerCardView: View {
 	@Environment(\.blueprint) private var bp
 	@Environment(\.colorSchemeContrast) private var contrast
@@ -23,31 +24,70 @@ public struct GenericContainerCardView: View {
 		self.compact = compact
 	}
 
-	private var isDown: Bool { !container.isRunning }
-
-	private var borderColor: Color {
-		isDown ? bp.crane.opacity(0.4) : bp.creaseLine
-	}
+	private var weight: StatusWeight { container.isRunning ? .up : .down }
 
 	public var body: some View {
-		VStack(alignment: .leading, spacing: 6) {
+		let m = CardMetrics.of(compact: compact)
+		VStack(alignment: .leading, spacing: m.rowSpacing) {
+			if weight == .down && !compact { DownBanner(compact: compact) }
 			header
-			if !compact { statsRow }
-			if let status = container.status, !status.isEmpty {
-				KVRow(key: container.isRunning ? "Uptime" : "State", value: status, valueColor: bp.ink60)
+			if weight == .up {
+				quietLine
+			} else {
+				if !compact { statsRow }
+				if let status = container.status, !status.isEmpty {
+					KVRow(key: "State", value: status, valueColor: bp.ink60)
+				}
 			}
 		}
-		.padding(compact ? 9 : 11)
-		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-		.background(bp.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-		.overlay(alignment: .topTrailing) { FoldedCorner().padding(5) }
-		.overlay {
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.strokeBorder(borderColor, lineWidth: 1)
-		}
-		.opacity(isDown && contrast != .increased ? 0.6 : 1)
+		.statusCardChrome(weight, metrics: m, bp: bp, increasedContrast: contrast == .increased)
 		.accessibilityElement(children: .ignore)
 		.accessibilityLabel(accessibilityDescription)
+	}
+
+	private var header: some View {
+		HStack(spacing: 6) {
+			if weight == .up {
+				Circle().fill(bp.up).frame(width: 7, height: 7)
+			}
+			Text(container.name)
+				.font(weight == .up
+					? Typography.display(compact ? 12 : 12.5, weight: .medium)
+					: Typography.display(compact ? 12 : 13, weight: .semibold))
+				.foregroundStyle(weight == .up ? bp.ink60 : bp.ink)
+				.lineLimit(1)
+				.truncationMode(.middle)
+			Spacer(minLength: 4)
+			if !container.controllable {
+				Image(systemName: "lock.fill")
+					.font(.system(size: 9, weight: .semibold))
+					.foregroundStyle(bp.ink60)
+					.accessibilityLabel("Not controllable")
+			}
+		}
+	}
+
+	/// Quiet (running) card's single line: uptime, else CPU/MEM if sampled.
+	@ViewBuilder private var quietLine: some View {
+		if let status = container.status, !status.isEmpty {
+			Text(status)
+				.font(Typography.mono(compact ? 10 : 11, weight: .regular))
+				.foregroundStyle(bp.ink60)
+				.lineLimit(1)
+		} else {
+			statsRow
+		}
+	}
+
+	@ViewBuilder private var statsRow: some View {
+		if let stats, stats.cpuPct != nil || stats.memUsedMb != nil {
+			HStack(spacing: 12) {
+				if let cpu = stats.cpuPct { Text("CPU \(Format.num(cpu, unit: "%"))") }
+				if let mem = stats.memUsedMb { Text("MEM \(Format.memGB(mem))") }
+			}
+			.font(Typography.mono(compact ? 9 : 10, weight: .regular))
+			.foregroundStyle(bp.ink60)
+		}
 	}
 
 	/// "qbittorrent, running. CPU 2 percent, memory 0.31 gigabytes. uptime Up 3 hours. Not controllable."
@@ -66,40 +106,5 @@ public struct GenericContainerCardView: View {
 		if !container.controllable { parts.append("not controllable") }
 
 		return parts.joined(separator: ". ")
-	}
-
-	private var header: some View {
-		HStack(spacing: 6) {
-			Circle()
-				.fill(container.isRunning ? bp.up : bp.crane)
-				.frame(width: 7, height: 7)
-			Text(container.name)
-				.font(Typography.display(13, weight: .semibold))
-				.foregroundStyle(bp.ink)
-				.lineLimit(1)
-				.truncationMode(.middle)
-			Spacer(minLength: 4)
-			if !container.controllable {
-				Image(systemName: "lock.fill")
-					.font(.system(size: 9, weight: .semibold))
-					.foregroundStyle(bp.ink60)
-					.accessibilityLabel("Not controllable")
-			}
-		}
-	}
-
-	@ViewBuilder private var statsRow: some View {
-		if let stats, stats.cpuPct != nil || stats.memUsedMb != nil {
-			HStack(spacing: 12) {
-				if let cpu = stats.cpuPct {
-					Text("CPU \(Format.num(cpu, unit: "%"))")
-				}
-				if let mem = stats.memUsedMb {
-					Text("MEM \(Format.memGB(mem))")
-				}
-			}
-			.font(Typography.mono(10, weight: .regular))
-			.foregroundStyle(bp.ink60)
-		}
 	}
 }

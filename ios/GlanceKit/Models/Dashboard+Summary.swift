@@ -7,6 +7,8 @@ public extension Dashboard {
 	var downServices: [Card] { cards.filter { $0.status == .down } }
 	var downCount: Int { downServices.count }
 	var upCount: Int { cards.filter { $0.status == .up }.count }
+	/// Reachable-but-not-fresh services (independent of down): the fleet stale count.
+	var staleCount: Int { cards.filter { $0.status != .down && $0.stale == true }.count }
 
 	/// Disk usage percent (0…100), if both used/total are known.
 	var diskPercent: Double? {

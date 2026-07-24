@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// A single service card: card chrome (fill, folded corner, status border,
-/// down-dimming) + a header (title, container CPU/MEM, status badge) + a
-/// service-specific body keyed on `card.id` — mirroring glance.jsx's renderCard.
+/// A single service card, status-weighted (v1.2): a healthy service recedes to a
+/// dot + name + one condensed metric on a translucent panel; a stale one gains a
+/// leading amber spine and a STALE pill; a down one turns loud — a `● DOWN`
+/// banner and a status border. Trouble reads first. Shares `StatusCardChrome`
+/// with `GenericContainerCardView` so the two card kinds can't drift.
 public struct ServiceCardView: View {
 	@Environment(\.blueprint) private var bp
 	@Environment(\.colorSchemeContrast) private var contrast
@@ -14,58 +16,63 @@ public struct ServiceCardView: View {
 		self.compact = compact
 	}
 
-	private var isDown: Bool { card.status == .down }
-
-	private var borderColor: Color {
-		if card.stale == true { return bp.sax.opacity(0.45) }
-		if isDown { return bp.crane.opacity(0.4) }
-		return bp.creaseLine
-	}
+	private var weight: StatusWeight { StatusWeight(status: card.status, stale: card.stale) }
 
 	public var body: some View {
-		VStack(alignment: .leading, spacing: 6) {
+		let m = CardMetrics.of(compact: compact)
+		VStack(alignment: .leading, spacing: m.rowSpacing) {
+			if weight == .down && !compact { DownBanner(compact: compact) }
 			header
-			if !compact { containerStats }
-			body(for: card)
+			if weight == .up {
+				quietMetric
+			} else {
+				if !compact { containerStats }
+				body(for: card)
+			}
 		}
-		.padding(compact ? 9 : 11)
-		// Fill the grid cell so cards in the same row share the tallest's height.
-		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-		.background(bp.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-		.overlay(alignment: .topTrailing) { FoldedCorner().padding(5) }
-		.overlay {
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.strokeBorder(borderColor, lineWidth: 1)
-		}
-		.opacity(isDown && contrast != .increased ? 0.6 : 1)
+		.statusCardChrome(weight, metrics: m, bp: bp, increasedContrast: contrast == .increased)
 		// One VoiceOver stop per card: name → status → metrics, spoken via Format.
 		.accessibilityElement(children: .ignore)
 		.accessibilityLabel(card.spokenSummary)
 	}
 
-
 	private var header: some View {
 		HStack(spacing: 6) {
+			if weight == .up {
+				Circle()
+					.fill(bp.statusColor(card.status, stale: card.stale))
+					.frame(width: 7, height: 7)
+			}
 			Text(card.title)
-				.font(Typography.display(13, weight: .semibold))
-				.foregroundStyle(bp.ink)
+				.font(weight == .up
+					? Typography.display(compact ? 12 : 12.5, weight: .medium)
+					: Typography.display(compact ? 12 : 13, weight: .semibold))
+				.foregroundStyle(weight == .up ? bp.ink60 : bp.ink)
 				.lineLimit(1)
 			Spacer(minLength: 4)
-			StatusBadge(status: card.status, stale: card.stale)
+			if weight == .stale { StatusBadge(status: card.status, stale: card.stale) }
+		}
+	}
+
+	/// The quiet card's single line: the service's key metric, else CPU/MEM.
+	@ViewBuilder private var quietMetric: some View {
+		if let metric = card.condensedMetric {
+			Text(metric)
+				.font(Typography.mono(compact ? 10 : 11, weight: .regular))
+				.foregroundStyle(bp.ink60)
+				.lineLimit(1)
+		} else {
+			containerStats
 		}
 	}
 
 	@ViewBuilder private var containerStats: some View {
 		if card.cpuPct != nil || card.memMb != nil {
 			HStack(spacing: 12) {
-				if let cpu = card.cpuPct {
-					Text("CPU \(Format.num(cpu, unit: "%"))")
-				}
-				if let mem = card.memMb {
-					Text("MEM \(Format.memGB(mem))")
-				}
+				if let cpu = card.cpuPct { Text("CPU \(Format.num(cpu, unit: "%"))") }
+				if let mem = card.memMb { Text("MEM \(Format.memGB(mem))") }
 			}
-			.font(Typography.mono(10, weight: .regular))
+			.font(Typography.mono(compact ? 9 : 10, weight: .regular))
 			.foregroundStyle(bp.ink60)
 		}
 	}
@@ -101,3 +108,24 @@ public struct ServiceCardView: View {
 		}
 	}
 }
+
+#if DEBUG
+#Preview("Status weights") {
+	let down = Card(id: "sonarr", title: "Sonarr", status: .down, cpuPct: 1.2, memMb: 300,
+	                data: CardData(queue: 17, wanted: 17))
+	let stale = Card(id: "radarr", title: "Radarr", status: .up, stale: true, cpuPct: 1.0, memMb: 290,
+	                 data: CardData(queue: 0, missing: 3))
+	let up = Card(id: "jellyfin", title: "Jellyfin", status: .up, cpuPct: 0.1, memMb: 720,
+	              data: CardData(streams: 1))
+	return VStack(alignment: .leading, spacing: 8) {
+		ServiceCardView(card: down)
+		LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], spacing: 8) {
+			ServiceCardView(card: stale)
+			ServiceCardView(card: up)
+		}
+	}
+	.padding(16)
+	.background(BlueprintColors.dark.graph)
+	.environment(\.blueprint, .dark)
+}
+#endif
