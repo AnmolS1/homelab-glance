@@ -194,6 +194,9 @@ private struct UpdatedFooter: View {
 private struct CompactSensors: View {
 	@Environment(\.blueprint) private var bp
 	let s: Sensors
+	/// Drop the LOAD/POWER/VRAM line, keeping only the two temperature sparklines —
+	/// the medium-detail fallback the large tiles fall back to when space is tight.
+	var tempsOnly: Bool = false
 
 	private func row(_ label: String, _ temp: Double, _ history: [Double]?, _ color: Color) -> some View {
 		let data = history ?? []
@@ -216,16 +219,18 @@ private struct CompactSensors: View {
 		VStack(alignment: .leading, spacing: 2) {
 			if let t = s.nvmeTemp { row("NVMe", t, s.nvmeTempHistory, bp.sax) }
 			if let t = s.gpuTemp { row("GPU", t, s.gpuTempHistory, bp.up) }
-			HStack(spacing: 12) {
-				if let l = s.gpuLoadPct { Text("LOAD \(Format.num(l, unit: "%", decimals: 0))") }
-				if let p = s.gpuPowerW { Text("POWER \(Format.num(p, unit: "W", decimals: 0))") }
-				if let u = s.gpuVramUsedMb, let tot = s.gpuVramTotalMb {
-					Text("VRAM \(Format.num(u / 1024))/\(Format.num(tot / 1024, unit: "G", decimals: 0))")
+			if !tempsOnly {
+				HStack(spacing: 12) {
+					if let l = s.gpuLoadPct { Text("LOAD \(Format.num(l, unit: "%", decimals: 0))") }
+					if let p = s.gpuPowerW { Text("POWER \(Format.num(p, unit: "W", decimals: 0))") }
+					if let u = s.gpuVramUsedMb, let tot = s.gpuVramTotalMb {
+						Text("VRAM \(Format.num(u / 1024))/\(Format.num(tot / 1024, unit: "G", decimals: 0))")
+					}
 				}
+				.foregroundStyle(bp.ink60)
+				.accessibilityElement(children: .ignore)
+				.accessibilityLabel(gpuSpoken)
 			}
-			.foregroundStyle(bp.ink60)
-			.accessibilityElement(children: .ignore)
-			.accessibilityLabel(gpuSpoken)
 		}
 		.font(Typography.mono(8, weight: .semibold))
 	}
@@ -292,8 +297,10 @@ private struct MiniCard: View {
 				}
 			}
 			.padding(7)
-			// Fill the grid cell so cards in the same row share the tallest's height.
-			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+			// Hug content vertically (no maxHeight fill): stretching short cards to the
+			// row's tallest left empty bottoms that read as wasted space. Full width
+			// still equalizes columns.
+			.frame(maxWidth: .infinity, alignment: .topLeading)
 			.background(bp.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 			.overlay { RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(borderColor, lineWidth: 1) }
 			.opacity(card.status == .down ? 0.6 : 1)
@@ -329,18 +336,55 @@ private struct LargeView: View {
 	}
 
 	var body: some View {
+		let shown = Array(cards.prefix(limit))
+		// The square tile can't scroll, so pick the richest layout that FITS instead
+		// of overflowing and clipping the header. Candidates are ordered richest →
+		// lightest and are all Spacer-free — a flexible Spacer would report "fits" at
+		// any height and defeat the fallback (see the MiniCard/ViewThatFits note).
+		ViewThatFits(in: .vertical) {
+			column(shown, sensors: .full)
+			column(shown, sensors: .tempsOnly)
+			column(shown, sensors: .none)
+			column(WidgetPriority.problemsFirst(shown, keeping: 4), sensors: .none)
+		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+	}
+
+	@ViewBuilder
+	private func column(_ cards: [Card], sensors: SensorDetail) -> some View {
 		VStack(alignment: .leading, spacing: 5) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
 			LazyVGrid(columns: cols, alignment: .leading, spacing: density == .compact ? 4 : 5) {
-				ForEach(cards.prefix(limit)) { MiniCard(card: $0) }
+				ForEach(cards) { MiniCard(card: $0) }
 			}
-			if let s = dash.host.sensors, s.hasReadings {
-				CompactSensors(s: s)
+			if let s = dash.host.sensors, s.hasReadings, sensors != .none {
+				CompactSensors(s: s, tempsOnly: sensors == .tempsOnly)
 			}
-			Spacer(minLength: 0)
 			UpdatedFooter(date: updated)
 		}
+	}
+}
+
+/// How much of the sensor block a large tile shows, richest first. `full` = temps +
+/// LOAD/POWER/VRAM; `tempsOnly` = just the two sparklines; `none` = omit entirely.
+private enum SensorDetail { case full, tempsOnly, none }
+
+/// Truncation helper for the tightest widget fallbacks: surface down/stale services
+/// first so a problem is never the card that gets dropped, then keep the original
+/// (CardConfig) order within each tier.
+private enum WidgetPriority {
+	static func problemsFirst(_ cards: [Card], keeping count: Int) -> [Card] {
+		func rank(_ c: Card) -> Int {
+			if c.status == .down { return 0 }
+			if c.stale == true { return 1 }
+			return 2
+		}
+		// Stable: enumerate so equal-rank cards keep their original CardConfig order.
+		return Array(cards.enumerated()
+			.sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+			.map(\.element)
+			.prefix(count))
 	}
 }
 
@@ -361,16 +405,28 @@ private struct ExtraLargeView: View {
 	}
 
 	var body: some View {
+		let shown = Array(cards.prefix(density == .compact ? 15 : 12))
+		// Same fit-not-clip strategy as the large tile: this wide-short tile overflows
+		// at large text sizes too. Spacer-free candidates, richest → lightest.
+		ViewThatFits(in: .vertical) {
+			column(shown, sensors: .full)
+			column(shown, sensors: .tempsOnly)
+			column(shown, sensors: .none)
+		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+	}
+
+	@ViewBuilder
+	private func column(_ cards: [Card], sensors: SensorDetail) -> some View {
 		VStack(alignment: .leading, spacing: 8) {
 			HostLine(dash: dash)
 			Rectangle().fill(bp.creaseLine).frame(height: 1)
 			LazyVGrid(columns: cols, alignment: .leading, spacing: 8) {
-				ForEach(cards.prefix(density == .compact ? 15 : 12)) { MiniCard(card: $0) }
+				ForEach(cards) { MiniCard(card: $0) }
 			}
-			if let s = dash.host.sensors, s.hasReadings {
-				CompactSensors(s: s)
+			if let s = dash.host.sensors, s.hasReadings, sensors != .none {
+				CompactSensors(s: s, tempsOnly: sensors == .tempsOnly)
 			}
-			Spacer(minLength: 0)
 			UpdatedFooter(date: updated)
 		}
 	}
@@ -426,6 +482,11 @@ struct DashboardWidgetEntryView: View {
 		let bp = BlueprintColors.resolve(scheme)
 		content(bp)
 			.environment(\.blueprint, bp)
+			// Fixed-frame backstop: widgets can't scroll, so cap enlargement at a level
+			// the tiles can still lay out. ViewThatFits does the real graceful
+			// degradation on the large tiles; this bounds small/medium/accessory. Still
+			// honors Dynamic Type up through accessibility1 (the v1.1 a11y scaling).
+			.dynamicTypeSize(...DynamicTypeSize.accessibility1)
 			.overlay(alignment: .topTrailing) {
 				if !isAccessory { FoldedCorner().padding(6) }
 			}

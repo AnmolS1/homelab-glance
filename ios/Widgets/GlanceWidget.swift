@@ -31,3 +31,24 @@ struct GlanceWidget: Widget {
 		#endif
 	}
 }
+
+#if DEBUG
+/// Bundled-mock entry for canvas previews — mirrors how the timeline provider
+/// builds its cards (mergeTiles → asWidgetCard), so the preview exercises the real
+/// fit-to-tile layout. Flip the device's text size in the canvas to watch the large
+/// tiles degrade (full → temps-only → no-sensors → fewer cards) instead of clipping.
+private func previewEntry(layout: WidgetLayoutOption = .grid,
+                          density: WidgetDensity = .regular) -> DashboardEntry {
+	let dash = try? MockData.sampleDashboard()
+	let config = CardConfigStore.shared.load()
+	let cards = dash.map {
+		mergeTiles(cards: $0.cards, containers: $0.containers ?? [], config: config, selection: nil)
+			.map { $0.asWidgetCard(config: config) }
+	} ?? []
+	return DashboardEntry(date: .now, dashboard: dash, unreachable: false,
+	                      cards: cards, layout: layout, density: density)
+}
+
+#Preview("Large", as: .systemLarge) { GlanceWidget() } timeline: { previewEntry() }
+#Preview("Extra Large", as: .systemExtraLarge) { GlanceWidget() } timeline: { previewEntry() }
+#endif

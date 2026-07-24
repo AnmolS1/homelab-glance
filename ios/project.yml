@@ -10,7 +10,7 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "1.1.0"
+    MARKETING_VERSION: "1.2.0"
     # Build number. Xcode Cloud overrides this from the git commit count in
     # ci_scripts/ci_post_clone.sh (auto-increment); this literal is the local /
     # fallback value. Must stay ≥ the highest build already uploaded to ASC.
