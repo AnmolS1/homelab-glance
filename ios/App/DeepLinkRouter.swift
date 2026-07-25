@@ -6,6 +6,10 @@ import GlanceKit
 enum DashRoute: Hashable {
 	case containers
 	case logs(container: String)
+	/// Settings → "Widget & cards" manager. Normally reached via a NavigationLink
+	/// inside Settings; also a value route so the screenshot harness can deep-jump
+	/// straight to it. Not part of the public URL scheme (`DeepLink`).
+	case cards
 }
 
 /// Carries an incoming `DeepLink` (from `onOpenURL`) to the main-window

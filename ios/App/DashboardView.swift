@@ -68,53 +68,16 @@ struct DashboardView: View {
 		router?.pending = nil
 	}
 
+	/// Resolved palette for the current colour scheme. A computed property (not a
+	/// `let` inside `body`) so the type-checker doesn't re-infer it across the
+	/// whole body expression — that pushed `body` past the solver's budget on
+	/// CI's slower machine and failed the Release archive. See `navigation`,
+	/// `rootContent`, and `navToolbar`, which wall off sub-expressions behind
+	/// opaque return types for the same reason.
+	private var bp: BlueprintColors { BlueprintColors.resolve(scheme) }
+
 	var body: some View {
-		let bp = BlueprintColors.resolve(scheme)
-		NavigationStack(path: $path) {
-			ZStack {
-				GraphPaperBackground()
-				if inPanel {
-					VStack(spacing: 0) {
-						HStack(spacing: 14) {
-							Spacer()
-							controlLink
-							settingsLink
-						}
-						.font(.title3)
-						.tint(bp.crease)
-						.padding(.horizontal, 14)
-						.padding(.top, 10)
-						content(bp)
-					}
-				} else {
-					content(bp)
-				}
-			}
-			.navigationTitle("")
-			.navigationDestination(for: DashRoute.self) { route in
-				switch route {
-				case .containers:
-					ControlView(settings: settings)
-				case .logs(let container):
-					LogsView(settings: settings, container: container)
-						.environment(\.blueprint, bp)
-				case .cards:
-					CardManagerView(settings: settings)
-						.environment(\.blueprint, bp)
-				}
-			}
-			.toolbar {
-				if !inPanel {
-					ToolbarItem(placement: .primaryAction) { controlLink.tint(bp.crease) }
-					ToolbarItem(placement: .primaryAction) { settingsLink.tint(bp.crease) }
-				}
-			}
-			// In the menu-bar popover there's no title bar — hide the empty
-			// nav-bar area so the in-content buttons sit at the very top.
-			#if os(macOS)
-			.toolbar(inPanel ? .hidden : .automatic, for: .windowToolbar)
-			#endif
-		}
+		navigation
 		.environment(\.blueprint, bp)
 		.tint(bp.crease)
 		.task { model.start() }
@@ -145,6 +108,69 @@ struct DashboardView: View {
 			case "logs":       path = NavigationPath([DashRoute.containers, DashRoute.logs(container: "jellyfin")])
 			default: break
 			}
+		}
+	}
+
+	/// The navigation container. Extracted from `body` so its whole chain
+	/// (destinations, toolbars) type-checks as an isolated `some View`.
+	private var navigation: some View {
+		NavigationStack(path: $path) {
+			ZStack {
+				GraphPaperBackground()
+				rootContent
+			}
+			.navigationTitle("")
+			.navigationDestination(for: DashRoute.self) { destination($0) }
+			.toolbar { navToolbar }
+			// In the menu-bar popover there's no title bar — hide the empty
+			// nav-bar area so the in-content buttons sit at the very top.
+			#if os(macOS)
+			.toolbar(inPanel ? .hidden : .automatic, for: .windowToolbar)
+			#endif
+		}
+	}
+
+	/// The ZStack's foreground: the in-panel nav row (menu-bar popover only)
+	/// stacked over the dashboard content, or just the content in the window.
+	@ViewBuilder
+	private var rootContent: some View {
+		if inPanel {
+			VStack(spacing: 0) {
+				HStack(spacing: 14) {
+					Spacer()
+					controlLink
+					settingsLink
+				}
+				.font(.title3)
+				.tint(bp.crease)
+				.padding(.horizontal, 14)
+				.padding(.top, 10)
+				content(bp)
+			}
+		} else {
+			content(bp)
+		}
+	}
+
+	@ViewBuilder
+	private func destination(_ route: DashRoute) -> some View {
+		switch route {
+		case .containers:
+			ControlView(settings: settings)
+		case .logs(let container):
+			LogsView(settings: settings, container: container)
+				.environment(\.blueprint, bp)
+		case .cards:
+			CardManagerView(settings: settings)
+				.environment(\.blueprint, bp)
+		}
+	}
+
+	@ToolbarContentBuilder
+	private var navToolbar: some ToolbarContent {
+		if !inPanel {
+			ToolbarItem(placement: .primaryAction) { controlLink.tint(bp.crease) }
+			ToolbarItem(placement: .primaryAction) { settingsLink.tint(bp.crease) }
 		}
 	}
 
