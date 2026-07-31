@@ -68,6 +68,15 @@ Or open `HomelabGlance.xcodeproj` in Xcode and run. The app launches in **mock m
   like a root password and keep the API behind Tailscale/Tunnel.
 - **Live Activity / push:** foreground updates work out of the box; ActivityKit **push**
   updates from the aggregator are a stretch goal (not implemented).
+- **App Store Support URL — set it on every platform, before the version ships.**
+  Use `https://ponderance.dev/support/homelab-glance/` (keep the trailing slash;
+  the bare path 307s), not the GitHub repo. `supportUrl` belongs to each
+  *version localization*, not to the app, so the platforms drift independently:
+  as of 2026-07-31 iOS 1.2 was correct while macOS 1.2 still pointed at GitHub.
+  There is no fixing it afterwards — `PATCH /v1/appStoreVersionLocalizations/{id}`
+  on a `READY_FOR_SALE` version returns `409 STATE_ERROR — "Attribute
+  'supportUrl' cannot be edited at this time"`. (`STORE.md` has the full metadata
+  table but is gitignored here, since this repo tracks only READMEs.)
 
 ## Notes
 
