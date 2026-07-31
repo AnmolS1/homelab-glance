@@ -10,10 +10,17 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "1.2.0"
-    # Build number. Xcode Cloud overrides this from the git commit count in
-    # ci_scripts/ci_post_clone.sh (auto-increment); this literal is the local /
-    # fallback value. Must stay ≥ the highest build already uploaded to ASC.
+    # Release version = the TestFlight "pre-release train" key. A train CLOSES the
+    # moment its App Store version goes READY_FOR_SALE, and every later upload is
+    # rejected with ITMS-90186 / ITMS-90062 — so this MUST be bumped before the first
+    # push after a release, even if the code is unchanged. ASC normalises 1.2.0 to
+    # "1.2", so the rejection names a string that isn't in this file. 1.2 shipped
+    # 2026-07-24 (build 17); 1.2.1 opens the next train.
+    MARKETING_VERSION: "1.2.1"
+    # Build number, unique within a train. Xcode Cloud stamps its own run number over
+    # this at archive time (runs 16/17 uploaded as builds 16/17 while the commit count
+    # was 33), so the ci_scripts/ci_post_clone.sh sed only affects local/Organizer
+    # builds. Keep this ≥ the highest build uploaded by hand.
     CURRENT_PROJECT_VERSION: "26"
     SWIFT_VERSION: "6.0"
     CODE_SIGN_STYLE: Automatic
